@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      pessoas: {
+        Row: {
+          atualizado_em: string | null
+          cpf: string
+          criado_em: string | null
+          data_nascimento: string | null
+          email: string | null
+          id: string
+          instagram: string | null
+          municipio: string | null
+          nome: string | null
+          observacoes_gerais: string | null
+          origem: string | null
+          outras_redes: string | null
+          secao_eleitoral: string | null
+          situacao_titulo: string | null
+          telefone: string | null
+          titulo_eleitor: string | null
+          uf: string | null
+          whatsapp: string | null
+          zona_eleitoral: string | null
+        }
+        Insert: {
+          atualizado_em?: string | null
+          cpf: string
+          criado_em?: string | null
+          data_nascimento?: string | null
+          email?: string | null
+          id?: string
+          instagram?: string | null
+          municipio?: string | null
+          nome?: string | null
+          observacoes_gerais?: string | null
+          origem?: string | null
+          outras_redes?: string | null
+          secao_eleitoral?: string | null
+          situacao_titulo?: string | null
+          telefone?: string | null
+          titulo_eleitor?: string | null
+          uf?: string | null
+          whatsapp?: string | null
+          zona_eleitoral?: string | null
+        }
+        Update: {
+          atualizado_em?: string | null
+          cpf?: string
+          criado_em?: string | null
+          data_nascimento?: string | null
+          email?: string | null
+          id?: string
+          instagram?: string | null
+          municipio?: string | null
+          nome?: string | null
+          observacoes_gerais?: string | null
+          origem?: string | null
+          outras_redes?: string | null
+          secao_eleitoral?: string | null
+          situacao_titulo?: string | null
+          telefone?: string | null
+          titulo_eleitor?: string | null
+          uf?: string | null
+          whatsapp?: string | null
+          zona_eleitoral?: string | null
+        }
+        Relationships: []
+      }
       suplentes: {
         Row: {
           ano_eleicao: number | null
@@ -91,6 +157,62 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      visitas: {
+        Row: {
+          assunto: string | null
+          atualizado_em: string | null
+          cadastrado_por: string | null
+          criado_em: string | null
+          data_hora: string | null
+          descricao_assunto: string | null
+          id: string
+          observacoes: string | null
+          origem_visita: string | null
+          pessoa_id: string | null
+          quem_indicou: string | null
+          responsavel_tratativa: string | null
+          status: string | null
+        }
+        Insert: {
+          assunto?: string | null
+          atualizado_em?: string | null
+          cadastrado_por?: string | null
+          criado_em?: string | null
+          data_hora?: string | null
+          descricao_assunto?: string | null
+          id?: string
+          observacoes?: string | null
+          origem_visita?: string | null
+          pessoa_id?: string | null
+          quem_indicou?: string | null
+          responsavel_tratativa?: string | null
+          status?: string | null
+        }
+        Update: {
+          assunto?: string | null
+          atualizado_em?: string | null
+          cadastrado_por?: string | null
+          criado_em?: string | null
+          data_hora?: string | null
+          descricao_assunto?: string | null
+          id?: string
+          observacoes?: string | null
+          origem_visita?: string | null
+          pessoa_id?: string | null
+          quem_indicou?: string | null
+          responsavel_tratativa?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visitas_pessoa_id_fkey"
+            columns: ["pessoa_id"]
+            isOneToOne: false
+            referencedRelation: "pessoas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
