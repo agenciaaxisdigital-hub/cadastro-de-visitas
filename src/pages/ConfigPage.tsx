@@ -69,7 +69,7 @@ export default function ConfigPage() {
       const { error: userError } = await supabase.from("usuarios").insert({
         user_id: authData.user.id,
         nome_usuario: newUser.nome_usuario,
-        email: newUser.email,
+        email: autoEmail,
       });
       if (userError) throw userError;
 
