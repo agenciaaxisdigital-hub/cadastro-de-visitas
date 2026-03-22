@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
-import { ArrowLeft, Plus, Pencil, ChevronRight, Calendar } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Calendar, ChevronDown } from "lucide-react";
 import { formatDateTime } from "@/lib/masks";
+import { cn } from "@/lib/utils";
 
 export default function PessoaDetalhePage() {
   const { id } = useParams();
