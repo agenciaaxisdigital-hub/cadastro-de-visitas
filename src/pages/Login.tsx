@@ -29,7 +29,7 @@ export default function Login() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      <HyperspeedBackground />
+      <ShapeGridBackground />
 
       <div className="relative z-10 w-full max-w-sm mx-4 animate-slide-up">
         {/* Avatar */}
