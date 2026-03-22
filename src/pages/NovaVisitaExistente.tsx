@@ -45,7 +45,7 @@ export default function NovaVisitaExistente() {
     try {
       const { error } = await supabase.from("visitas").insert({
         pessoa_id: pessoaId,
-        data_hora: new Date().toISOString(),
+        data_hora: dataHora ? new Date(dataHora).toISOString() : new Date().toISOString(),
         assunto,
         status: "Aguardando",
         cadastrado_por: nomeUsuario || "",

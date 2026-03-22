@@ -273,7 +273,7 @@ export default function NovaVisita() {
 
       const { error: visitaError } = await supabase.from("visitas").insert({
         pessoa_id: pid,
-        data_hora: new Date().toISOString(),
+        data_hora: visita.data_hora ? new Date(visita.data_hora).toISOString() : new Date().toISOString(),
         assunto: visita.assunto, descricao_assunto: visita.descricao_assunto || null,
         quem_indicou: visita.quem_indicou || null, origem_visita: visita.origem_visita || null,
         status: visita.status, responsavel_tratativa: visita.responsavel_tratativa || null,
