@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { LogOut, Moon, Sun } from "lucide-react";
 
 export default function ConfigPage() {
-  const { user, signOut } = useAuth();
+  const { user, nomeUsuario, signOut } = useAuth();
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
