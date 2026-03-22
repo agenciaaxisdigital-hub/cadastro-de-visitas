@@ -58,7 +58,7 @@ export default function NovaVisita() {
   const [saving, setSaving] = useState(false);
   const [existingPessoaId, setExistingPessoaId] = useState<string | null>(pessoaId || null);
   const [locked, setLocked] = useState(false);
-  const [showForm, setShowForm] = useState(!!pessoaId);
+  const [showForm, setShowForm] = useState(true);
   const [pessoaStatus, setPessoaStatus] = useState<"idle" | "found" | "new" | "api">("idle");
   const [visitHistory, setVisitHistory] = useState<any[]>([]);
 
@@ -173,7 +173,13 @@ export default function NovaVisita() {
   const handleInputChange = (value: string) => {
     const raw = unmaskCPF(value);
     if (/^\d+$/.test(raw) && raw.length <= 11) {
-      setSearchInput(maskCPF(value));
+      const masked = maskCPF(value);
+      setSearchInput(masked);
+      // Auto-search when 11 digits
+      if (raw.length === 11) {
+        setPessoa(prev => ({ ...prev, cpf: raw }));
+        setTimeout(() => handleSearch(), 100);
+      }
     } else {
       setSearchInput(value);
     }
@@ -183,7 +189,7 @@ export default function NovaVisita() {
     setSearchInput("");
     setLocked(false);
     setPessoaStatus("idle");
-    setShowForm(false);
+    setShowForm(true);
     setExistingPessoaId(null);
     setPessoa({ ...EMPTY_PESSOA });
     setVisitHistory([]);
@@ -304,38 +310,24 @@ export default function NovaVisita() {
         </div>
       )}
 
-      {/* ── CPF Search Card ── */}
+      {/* ── CPF ── */}
       {!pessoaId && (
         <div className="card-section mb-4 animate-fade-in">
           <div className="flex items-center gap-2 mb-3">
             <Search size={16} className="text-primary" />
             <p className="text-sm font-bold text-primary uppercase tracking-wide">CPF</p>
           </div>
-          <div className="flex gap-2">
+          <div className="relative">
             <input
               type="text"
               value={searchInput}
-              onChange={(e) => !locked && handleInputChange(e.target.value)}
-              readOnly={locked}
+              onChange={(e) => handleInputChange(e.target.value)}
               placeholder="000.000.000-00"
-              className={cn(
-                "flex-1 h-12 rounded-lg bg-background border border-border px-4 text-base outline-none focus:ring-2 focus:ring-primary/30 transition-shadow font-mono",
-                locked && "opacity-70 bg-muted"
-              )}
+              className="w-full h-12 rounded-lg bg-background border border-border px-4 text-base outline-none focus:ring-2 focus:ring-primary/30 transition-shadow font-mono"
               maxLength={14}
               inputMode="numeric"
-              onKeyDown={(e) => e.key === "Enter" && !locked && handleSearch()}
             />
-            {locked ? (
-              <button onClick={clearSearch} className="h-12 px-4 rounded-lg border border-border text-sm font-medium active:scale-95 transition-transform">
-                Trocar
-              </button>
-            ) : (
-              <button onClick={handleSearch} disabled={searching || !searchInput.trim()}
-                className="h-12 w-12 rounded-lg gradient-primary text-white flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50">
-                {searching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
-              </button>
-            )}
+            {searching && <Loader2 size={18} className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-primary" />}
           </div>
 
           {/* Status badges */}
@@ -362,13 +354,6 @@ export default function NovaVisita() {
                 <p className="text-xs text-muted-foreground">Essa pessoa ainda não foi cadastrada. Preencha os dados abaixo.</p>
               </div>
             </div>
-          )}
-
-          {!locked && !searching && (
-            <button onClick={() => { setPessoaStatus("new"); setLocked(true); setShowForm(true); }}
-              className="w-full text-center text-xs text-muted-foreground mt-2 py-1.5 hover:text-foreground transition-colors">
-              Cadastrar sem CPF
-            </button>
           )}
         </div>
       )}
