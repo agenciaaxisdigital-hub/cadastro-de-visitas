@@ -54,13 +54,6 @@ export default function DetalheVisita() {
     setLoading(false);
   }
 
-  const handleStatusUpdate = async () => {
-    setUpdatingStatus(true);
-    await supabase.from("visitas").update({ status: statusUpdate, atualizado_em: new Date().toISOString() }).eq("id", id);
-    setVisita((prev: any) => ({ ...prev, status: statusUpdate }));
-    toast({ title: "Status atualizado!" });
-    setUpdatingStatus(false);
-  };
 
   const handleDelete = async () => {
     await supabase.from("visitas").delete().eq("id", id);
