@@ -3,9 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { ArrowLeft, Plus, Pencil } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { maskCPF, formatDateTime } from "@/lib/masks";
-import { getStatusColor } from "@/lib/constants";
 
 export default function PessoaDetalhePage() {
   const { id } = useParams();
