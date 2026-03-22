@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
-import { Search } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import { maskCPF } from "@/lib/masks";
 
 export default function PessoasPage() {
@@ -64,23 +64,34 @@ export default function PessoasPage() {
             )[0];
 
             return (
-              <button
+              <div
                 key={p.id}
-                onClick={() => navigate(`/pessoa/${p.id}`)}
-                className="w-full text-left card-section hover:shadow-md active:scale-[0.98] transition-all"
+                className="card-section hover:shadow-md transition-all"
                 style={{ animationDelay: `${i * 50}ms` }}
               >
-                <p className="font-semibold text-sm">{p.nome || "Sem nome"}</p>
-                <p className="text-xs text-muted-foreground">
-                  CPF: {p.cpf && !p.cpf.startsWith("TEMP") ? `${maskCPF(p.cpf).slice(0, 7)}•••-••` : "–"}
-                </p>
-                <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                  <span>{visitCount} visita{visitCount !== 1 ? "s" : ""}</span>
-                  {lastVisit && (
-                    <span>Última: {new Date(lastVisit.data_hora).toLocaleDateString("pt-BR")}</span>
-                  )}
-                </div>
-              </button>
+                <button
+                  onClick={() => navigate(`/pessoa/${p.id}`)}
+                  className="w-full text-left"
+                >
+                  <p className="font-semibold text-sm">{p.nome || "Sem nome"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    CPF: {p.cpf && !p.cpf.startsWith("TEMP") ? `${maskCPF(p.cpf).slice(0, 7)}•••-••` : "–"}
+                  </p>
+                  <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+                    <span>{visitCount} visita{visitCount !== 1 ? "s" : ""}</span>
+                    {lastVisit && (
+                      <span>Última: {new Date(lastVisit.data_hora).toLocaleDateString("pt-BR")}</span>
+                    )}
+                  </div>
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); navigate(`/nova-visita-existente/${p.id}`); }}
+                  className="mt-2 w-full h-9 rounded-lg text-xs font-semibold text-primary border border-primary/30 hover:bg-primary/5 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Plus size={14} />
+                  Nova Visita
+                </button>
+              </div>
             );
           })}
         </div>
