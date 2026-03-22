@@ -57,7 +57,7 @@ export default function ConfigPage() {
       // Create auth user via admin endpoint (we'll use signUp as workaround)
       // Note: In production, this should be an edge function with service_role
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newUser.email,
+        email: autoEmail,
         password: newUser.password,
         options: { data: { nome: newUser.nome_usuario } },
       });
