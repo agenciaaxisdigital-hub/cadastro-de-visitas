@@ -34,7 +34,7 @@ function ProtectedRoutes() {
       <Route path="/" element={<HomePage />} />
       <Route path="/visitas" element={<HomePage />} />
       <Route path="/nova-visita" element={<NovaVisita />} />
-      <Route path="/nova-visita-existente/:pessoaId" element={<NovaVisitaExistente />} />
+      <Route path="/nova-visita-existente/:pessoaId" element={<NovaVisita />} />
       <Route path="/visita/:id" element={<DetalheVisita />} />
       <Route path="/pessoas" element={<PessoasPage />} />
       <Route path="/pessoa/:id" element={<PessoaDetalhePage />} />
