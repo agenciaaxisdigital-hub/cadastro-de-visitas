@@ -363,7 +363,7 @@ export default function NovaVisita() {
                   if (raw.length <= 11) setPessoa({ ...pessoa, cpf: raw });
                 }} placeholder="000.000.000-00" />
                 <InputField label="WhatsApp" value={pessoa.whatsapp} onChange={(v) => setPessoa({ ...pessoa, whatsapp: maskPhone(v) })} placeholder="(00) 00000-0000" />
-                <InputField label="E-mail" value={pessoa.email} onChange={(v) => setPessoa({ ...pessoa, email: v })} type="email" placeholder="email@exemplo.com" />
+                
                 <InputField label="Rede social (Instagram ou Facebook)" value={pessoa.instagram} onChange={(v) => setPessoa({ ...pessoa, instagram: v })} placeholder="@usuario ou link" />
                 <InputField label="Data de nascimento" value={pessoa.data_nascimento} onChange={(v) => setPessoa({ ...pessoa, data_nascimento: v })} type="date" />
               </div>
