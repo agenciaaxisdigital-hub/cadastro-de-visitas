@@ -362,10 +362,7 @@ export default function NovaVisita() {
                   const raw = unmaskCPF(v);
                   if (raw.length <= 11) setPessoa({ ...pessoa, cpf: raw });
                 }} placeholder="000.000.000-00" />
-                <div className="grid grid-cols-2 gap-3">
-                  <InputField label="Telefone" value={pessoa.telefone} onChange={(v) => setPessoa({ ...pessoa, telefone: maskPhone(v) })} placeholder="(00) 0000-0000" />
-                  <InputField label="WhatsApp" value={pessoa.whatsapp} onChange={(v) => setPessoa({ ...pessoa, whatsapp: maskPhone(v) })} placeholder="(00) 00000-0000" />
-                </div>
+                <InputField label="WhatsApp" value={pessoa.whatsapp} onChange={(v) => setPessoa({ ...pessoa, whatsapp: maskPhone(v) })} placeholder="(00) 00000-0000" />
                 <InputField label="E-mail" value={pessoa.email} onChange={(v) => setPessoa({ ...pessoa, email: v })} type="email" placeholder="email@exemplo.com" />
                 <div className="grid grid-cols-2 gap-3">
                   <InputField label="Instagram" value={pessoa.instagram} onChange={(v) => setPessoa({ ...pessoa, instagram: v.startsWith("@") ? v : v ? `@${v}` : "" })} placeholder="@usuario" />
