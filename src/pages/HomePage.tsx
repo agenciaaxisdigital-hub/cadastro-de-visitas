@@ -148,9 +148,6 @@ export default function HomePage() {
               {v.quem_indicou && (
                 <p className="text-xs text-muted-foreground">Indicado por: {v.quem_indicou}</p>
               )}
-              <span className={cn("inline-block mt-1 text-[10px] font-medium px-2 py-0.5 rounded-full", getStatusColor(v.status))}>
-                ● {v.status}
-              </span>
             </button>
           ))}
         </div>
