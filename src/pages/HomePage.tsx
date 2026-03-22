@@ -4,23 +4,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getStatusColor } from "@/lib/constants";
-import { formatDateTime, maskCPF } from "@/lib/masks";
 
-const STATUS_FILTERS = ["Todas", "Aguardando", "Em andamento", "Resolvido", "Sem solução"];
 const PERIOD_FILTERS = ["Hoje", "Esta semana", "Este mês", "Todas"];
 
 export default function HomePage() {
   const navigate = useNavigate();
   const [visitas, setVisitas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("Todas");
+  
   const [periodFilter, setPeriodFilter] = useState("Hoje");
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetchVisitas();
-  }, [statusFilter, periodFilter]);
+  }, [periodFilter]);
 
   async function fetchVisitas() {
     setLoading(true);
@@ -29,9 +26,6 @@ export default function HomePage() {
       .select("*, pessoas(nome, cpf)")
       .order("data_hora", { ascending: false });
 
-    if (statusFilter !== "Todas") {
-      query = query.eq("status", statusFilter);
-    }
 
     const now = new Date();
     if (periodFilter === "Hoje") {
@@ -77,23 +71,6 @@ export default function HomePage() {
         />
       </div>
 
-      {/* Status filters */}
-      <div className="flex gap-2 overflow-x-auto hide-scrollbar mb-3">
-        {STATUS_FILTERS.map((s) => (
-          <button
-            key={s}
-            onClick={() => setStatusFilter(s)}
-            className={cn(
-              "flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors active:scale-95",
-              statusFilter === s
-                ? "gradient-primary text-white"
-                : "bg-muted text-muted-foreground"
-            )}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
 
       {/* Period filter */}
       <div className="flex gap-2 mb-4">
@@ -124,9 +101,9 @@ export default function HomePage() {
         <div className="text-center py-16 text-muted-foreground">
           <p className="text-lg mb-1">Nenhuma visita encontrada</p>
           <p className="text-sm">
-            {searchQuery || statusFilter !== "Todas"
-              ? "Tente mudar os filtros."
-              : "Toque em + para registrar a primeira visita."}
+            {searchQuery
+              ? "Tente outro termo de busca."
+              : "Nenhuma visita neste período."}
           </p>
         </div>
       ) : (
