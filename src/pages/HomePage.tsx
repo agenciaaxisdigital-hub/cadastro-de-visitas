@@ -4,10 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getStatusColor } from "@/lib/constants";
-import { formatDateTime, maskCPF } from "@/lib/masks";
 
-const STATUS_FILTERS = ["Todas", "Aguardando", "Em andamento", "Resolvido", "Sem solução"];
 const PERIOD_FILTERS = ["Hoje", "Esta semana", "Este mês", "Todas"];
 
 export default function HomePage() {
