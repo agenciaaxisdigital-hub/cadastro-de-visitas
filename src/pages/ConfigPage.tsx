@@ -140,9 +140,6 @@ export default function ConfigPage() {
                 <input type="text" placeholder="Nome do usuário" value={newUser.nome_usuario}
                   onChange={(e) => setNewUser({ ...newUser, nome_usuario: e.target.value })}
                   className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
-                <input type="email" placeholder="E-mail (interno)" value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
                 <input type="password" placeholder="Senha" value={newUser.password}
                   onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                   className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
