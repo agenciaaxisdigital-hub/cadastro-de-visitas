@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ShapeGridBackground } from "@/components/ShapeGridBackground";
 import candidataImg from "@/assets/candidata.jpg";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, User } from "lucide-react";
+import { Loader2, User, Eye, EyeOff } from "lucide-react";
 
 export default function Login() {
   const { signIn } = useAuth();
