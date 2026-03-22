@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { ArrowLeft, Plus, Pencil } from "lucide-react";
-import { maskCPF, formatDateTime } from "@/lib/masks";
+import { formatDateTime } from "@/lib/masks";
 
 export default function PessoaDetalhePage() {
   const { id } = useParams();
