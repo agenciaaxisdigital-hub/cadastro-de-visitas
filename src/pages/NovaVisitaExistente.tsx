@@ -118,6 +118,15 @@ export default function NovaVisitaExistente() {
         </div>
         <div className="space-y-4">
           <div className="space-y-1.5">
+            <label className="text-xs font-bold text-foreground">Data e hora</label>
+            <input
+              type="datetime-local"
+              value={dataHora}
+              onChange={(e) => setDataHora(e.target.value)}
+              className="w-full h-12 rounded-lg bg-background border border-border px-4 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
+            />
+          </div>
+          <div className="space-y-1.5">
             <label className="text-xs font-bold text-foreground">Motivo / Assunto *</label>
             <input
               type="text"
