@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
-import { ArrowLeft, Loader2, Lock, CheckCircle2, AlertCircle, User } from "lucide-react";
-import { maskCPF, unmaskCPF, maskPhone, maskTitulo, validateCPF, formatDate } from "@/lib/masks";
+import { ArrowLeft, Loader2, Lock, CheckCircle2, AlertCircle, User, Search } from "lucide-react";
+import { maskCPF, unmaskCPF, maskPhone, maskTitulo, validateCPF } from "@/lib/masks";
 import { ASSUNTOS, ORIGENS_VISITA, STATUS_OPTIONS, UF_OPTIONS } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -49,15 +49,20 @@ export default function NovaVisita() {
   const navigate = useNavigate();
   const { pessoaId } = useParams<{ pessoaId?: string }>();
   const { toast } = useToast();
-  const { nomeUsuario } = useAuth();
+  const { nomeUsuario, isAdmin } = useAuth();
 
-  const [cpfInput, setCpfInput] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingPessoaId, setExistingPessoaId] = useState<string | null>(pessoaId || null);
-  const [cpfLocked, setCpfLocked] = useState(false);
+  const [locked, setLocked] = useState(false);
   const [showForm, setShowForm] = useState(!!pessoaId);
   const [pessoaStatus, setPessoaStatus] = useState<"idle" | "found" | "new" | "api">("idle");
+  const [visitHistory, setVisitHistory] = useState<any[]>([]);
+
+  // "visit_only" mode: person found, recepcao only fills visit data
+  // "full" mode: new person, fill everything
+  const formMode = pessoaStatus === "found" ? "visit_only" : "full";
 
   const [pessoa, setPessoa] = useState<DadosPessoa>({ ...EMPTY_PESSOA });
   const [visita, setVisita] = useState<DadosVisita>({
@@ -67,216 +72,221 @@ export default function NovaVisita() {
     responsavel_tratativa: "", observacoes: "",
   });
 
-  // If pessoaId is provided (existing person), load their data
   useEffect(() => {
-    if (pessoaId) {
-      loadExistingPessoa(pessoaId);
-    }
+    if (pessoaId) loadExistingPessoa(pessoaId);
   }, [pessoaId]);
 
   async function loadExistingPessoa(id: string) {
     const { data } = await supabase.from("pessoas").select("*").eq("id", id).maybeSingle();
     if (data) {
-      setPessoa({
-        cpf: data.cpf || "",
-        nome: data.nome || "",
-        data_nascimento: data.data_nascimento || "",
-        telefone: data.telefone || "",
-        email: data.email || "",
-        whatsapp: data.whatsapp || "",
-        instagram: data.instagram || "",
-        outras_redes: data.outras_redes || "",
-        titulo_eleitor: data.titulo_eleitor || "",
-        zona_eleitoral: data.zona_eleitoral || "",
-        secao_eleitoral: data.secao_eleitoral || "",
-        municipio: data.municipio || "",
-        uf: data.uf || "",
-        situacao_titulo: data.situacao_titulo || "",
-        observacoes_gerais: data.observacoes_gerais || "",
-      });
-      setCpfInput(data.cpf && !data.cpf.startsWith("TEMP") ? maskCPF(data.cpf) : "");
-      setCpfLocked(true);
+      fillPessoa(data);
       setExistingPessoaId(id);
       setPessoaStatus("found");
+      setLocked(true);
       setShowForm(true);
+      setSearchInput(data.cpf && !data.cpf.startsWith("TEMP") ? maskCPF(data.cpf) : data.nome || "");
+      loadVisitHistory(id);
     }
   }
 
-  // Auto-search when CPF reaches 11 digits
-  const handleCPFChange = (value: string) => {
-    const masked = maskCPF(value);
-    setCpfInput(masked);
-    const raw = unmaskCPF(masked);
+  function fillPessoa(data: any) {
+    setPessoa({
+      cpf: data.cpf || "",
+      nome: data.nome || "",
+      data_nascimento: data.data_nascimento || "",
+      telefone: data.telefone || "",
+      email: data.email || "",
+      whatsapp: data.whatsapp || "",
+      instagram: data.instagram || "",
+      outras_redes: data.outras_redes || "",
+      titulo_eleitor: data.titulo_eleitor || "",
+      zona_eleitoral: data.zona_eleitoral || "",
+      secao_eleitoral: data.secao_eleitoral || "",
+      municipio: data.municipio || "",
+      uf: data.uf || "",
+      situacao_titulo: data.situacao_titulo || "",
+      observacoes_gerais: data.observacoes_gerais || "",
+    });
+  }
 
-    if (raw.length === 11) {
-      searchCPF(raw);
+  async function loadVisitHistory(pessoaId: string) {
+    const { data } = await supabase
+      .from("visitas")
+      .select("id, data_hora, assunto, status")
+      .eq("pessoa_id", pessoaId)
+      .order("data_hora", { ascending: false })
+      .limit(5);
+    setVisitHistory(data || []);
+  }
+
+  // Search by CPF (digits) or by name
+  const handleSearch = useCallback(async () => {
+    const trimmed = searchInput.trim();
+    if (!trimmed) return;
+
+    setSearching(true);
+    const raw = unmaskCPF(trimmed);
+    const isCPF = raw.length >= 11 && /^\d{11}$/.test(raw.slice(0, 11));
+
+    if (isCPF) {
+      if (!validateCPF(raw.slice(0, 11))) {
+        toast({ title: "CPF inválido", variant: "destructive" });
+        setSearching(false);
+        return;
+      }
+      // Search by CPF in DB
+      const { data: existente } = await supabase
+        .from("pessoas")
+        .select("*")
+        .eq("cpf", raw.slice(0, 11))
+        .maybeSingle();
+
+      if (existente) {
+        fillPessoa(existente);
+        setExistingPessoaId(existente.id);
+        setPessoaStatus("found");
+        setLocked(true);
+        setShowForm(true);
+        loadVisitHistory(existente.id);
+        setSearching(false);
+        return;
+      }
+
+      // Try Brasil API
+      try {
+        const resp = await fetch(`https://brasilapi.com.br/api/cpf/v1/${raw.slice(0, 11)}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          setPessoa(prev => ({
+            ...prev,
+            cpf: raw.slice(0, 11),
+            nome: data.nome || "",
+            data_nascimento: data.data_nascimento ? data.data_nascimento.slice(0, 10) : "",
+          }));
+          setPessoaStatus("api");
+        } else {
+          setPessoa(prev => ({ ...prev, cpf: raw.slice(0, 11) }));
+          setPessoaStatus("new");
+        }
+      } catch {
+        setPessoa(prev => ({ ...prev, cpf: raw.slice(0, 11) }));
+        setPessoaStatus("new");
+      }
+
+      setLocked(true);
+      setShowForm(true);
     } else {
-      setPessoaStatus("idle");
-      setShowForm(false);
-      setExistingPessoaId(null);
-      setPessoa({ ...EMPTY_PESSOA });
+      // Search by name
+      const { data: matches } = await supabase
+        .from("pessoas")
+        .select("*")
+        .ilike("nome", `%${trimmed}%`)
+        .limit(1);
+
+      if (matches && matches.length > 0) {
+        fillPessoa(matches[0]);
+        setExistingPessoaId(matches[0].id);
+        setPessoaStatus("found");
+        setLocked(true);
+        setShowForm(true);
+        loadVisitHistory(matches[0].id);
+      } else {
+        setPessoa(prev => ({ ...prev, nome: trimmed }));
+        setPessoaStatus("new");
+        setLocked(true);
+        setShowForm(true);
+      }
+    }
+
+    setSearching(false);
+  }, [searchInput, toast]);
+
+  // Auto-search on CPF completion
+  const handleInputChange = (value: string) => {
+    const raw = unmaskCPF(value);
+    if (/^\d+$/.test(raw) && raw.length <= 11) {
+      setSearchInput(maskCPF(value));
+      if (raw.length === 11) {
+        // Trigger search automatically
+        setTimeout(() => {
+          const input = raw;
+          setSearchInput(maskCPF(input));
+        }, 0);
+      }
+    } else {
+      setSearchInput(value);
     }
   };
 
-  const searchCPF = useCallback(async (raw: string) => {
-    if (!validateCPF(raw)) {
-      toast({ title: "CPF inválido", description: "Verifique os números digitados.", variant: "destructive" });
-      return;
-    }
-
-    setSearching(true);
-
-    // 1) Check local DB
-    const { data: existente } = await supabase
-      .from("pessoas")
-      .select("*")
-      .eq("cpf", raw)
-      .maybeSingle();
-
-    if (existente) {
-      setPessoa({
-        cpf: existente.cpf,
-        nome: existente.nome || "",
-        data_nascimento: existente.data_nascimento || "",
-        telefone: existente.telefone || "",
-        email: existente.email || "",
-        whatsapp: existente.whatsapp || "",
-        instagram: existente.instagram || "",
-        outras_redes: existente.outras_redes || "",
-        titulo_eleitor: existente.titulo_eleitor || "",
-        zona_eleitoral: existente.zona_eleitoral || "",
-        secao_eleitoral: existente.secao_eleitoral || "",
-        municipio: existente.municipio || "",
-        uf: existente.uf || "",
-        situacao_titulo: existente.situacao_titulo || "",
-        observacoes_gerais: existente.observacoes_gerais || "",
-      });
-      setExistingPessoaId(existente.id);
-      setPessoaStatus("found");
-      setCpfLocked(true);
-      setShowForm(true);
-      setSearching(false);
-      return;
-    }
-
-    // 2) Try Brasil API for name/birth
-    try {
-      const resp = await fetch(`https://brasilapi.com.br/api/cpf/v1/${raw}`);
-      if (resp.ok) {
-        const data = await resp.json();
-        setPessoa(prev => ({
-          ...prev,
-          cpf: raw,
-          nome: data.nome || "",
-          data_nascimento: data.data_nascimento ? data.data_nascimento.slice(0, 10) : "",
-        }));
-        setPessoaStatus("api");
-      } else {
-        setPessoa(prev => ({ ...prev, cpf: raw }));
-        setPessoaStatus("new");
-      }
-    } catch {
-      setPessoa(prev => ({ ...prev, cpf: raw }));
-      setPessoaStatus("new");
-    }
-
-    setCpfLocked(true);
-    setShowForm(true);
-    setSearching(false);
-  }, [toast]);
-
-  const clearCPF = () => {
-    setCpfInput("");
-    setCpfLocked(false);
+  const clearSearch = () => {
+    setSearchInput("");
+    setLocked(false);
     setPessoaStatus("idle");
     setShowForm(false);
     setExistingPessoaId(null);
     setPessoa({ ...EMPTY_PESSOA });
-  };
-
-  const skipCPF = () => {
-    setPessoa(prev => ({ ...prev, cpf: "" }));
-    setPessoaStatus("new");
-    setShowForm(true);
+    setVisitHistory([]);
   };
 
   const handleSave = async () => {
-    if (!pessoa.nome) {
-      toast({ title: "Nome obrigatório", description: "Preencha o nome do visitante.", variant: "destructive" });
+    if (!pessoa.nome && formMode === "full") {
+      toast({ title: "Nome obrigatório", variant: "destructive" });
       return;
     }
     if (!visita.assunto) {
-      toast({ title: "Assunto obrigatório", description: "Selecione o assunto da visita.", variant: "destructive" });
+      toast({ title: "Assunto obrigatório", variant: "destructive" });
       return;
     }
 
     setSaving(true);
-
     try {
-      let pessoaId: string;
+      let pid: string;
 
       if (existingPessoaId) {
-        pessoaId = existingPessoaId;
-        // Update existing pessoa data
-        await supabase.from("pessoas").update({
-          nome: pessoa.nome,
-          telefone: pessoa.telefone || null,
-          email: pessoa.email || null,
-          whatsapp: pessoa.whatsapp || null,
-          instagram: pessoa.instagram || null,
-          outras_redes: pessoa.outras_redes || null,
-          titulo_eleitor: pessoa.titulo_eleitor || null,
-          zona_eleitoral: pessoa.zona_eleitoral || null,
-          secao_eleitoral: pessoa.secao_eleitoral || null,
-          municipio: pessoa.municipio || null,
-          uf: pessoa.uf || null,
-          data_nascimento: pessoa.data_nascimento || null,
-          situacao_titulo: pessoa.situacao_titulo || null,
-          observacoes_gerais: pessoa.observacoes_gerais || null,
-          atualizado_em: new Date().toISOString(),
-        }).eq("id", pessoaId);
+        pid = existingPessoaId;
+        // Only admin can update person data
+        if (isAdmin && formMode === "full") {
+          await supabase.from("pessoas").update({
+            nome: pessoa.nome, telefone: pessoa.telefone || null,
+            email: pessoa.email || null, whatsapp: pessoa.whatsapp || null,
+            instagram: pessoa.instagram || null, outras_redes: pessoa.outras_redes || null,
+            titulo_eleitor: pessoa.titulo_eleitor || null, zona_eleitoral: pessoa.zona_eleitoral || null,
+            secao_eleitoral: pessoa.secao_eleitoral || null, municipio: pessoa.municipio || null,
+            uf: pessoa.uf || null, data_nascimento: pessoa.data_nascimento || null,
+            situacao_titulo: pessoa.situacao_titulo || null, observacoes_gerais: pessoa.observacoes_gerais || null,
+            atualizado_em: new Date().toISOString(),
+          }).eq("id", pid);
+        }
       } else {
         const cpfToSave = pessoa.cpf || `TEMP${Date.now()}`;
         const { data: novaPessoa, error } = await supabase.from("pessoas").insert({
-          cpf: cpfToSave,
-          nome: pessoa.nome,
-          telefone: pessoa.telefone || null,
-          email: pessoa.email || null,
-          whatsapp: pessoa.whatsapp || null,
-          instagram: pessoa.instagram || null,
-          outras_redes: pessoa.outras_redes || null,
-          titulo_eleitor: pessoa.titulo_eleitor || null,
-          zona_eleitoral: pessoa.zona_eleitoral || null,
-          secao_eleitoral: pessoa.secao_eleitoral || null,
-          municipio: pessoa.municipio || null,
-          uf: pessoa.uf || null,
-          data_nascimento: pessoa.data_nascimento || null,
-          situacao_titulo: pessoa.situacao_titulo || null,
+          cpf: cpfToSave, nome: pessoa.nome,
+          telefone: pessoa.telefone || null, email: pessoa.email || null,
+          whatsapp: pessoa.whatsapp || null, instagram: pessoa.instagram || null,
+          outras_redes: pessoa.outras_redes || null, titulo_eleitor: pessoa.titulo_eleitor || null,
+          zona_eleitoral: pessoa.zona_eleitoral || null, secao_eleitoral: pessoa.secao_eleitoral || null,
+          municipio: pessoa.municipio || null, uf: pessoa.uf || null,
+          data_nascimento: pessoa.data_nascimento || null, situacao_titulo: pessoa.situacao_titulo || null,
           observacoes_gerais: pessoa.observacoes_gerais || null,
         }).select("id").single();
         if (error) throw error;
-        pessoaId = novaPessoa.id;
+        pid = novaPessoa.id;
       }
 
       const { error: visitaError } = await supabase.from("visitas").insert({
-        pessoa_id: pessoaId,
+        pessoa_id: pid,
         data_hora: visita.data_hora ? new Date(visita.data_hora).toISOString() : new Date().toISOString(),
-        assunto: visita.assunto,
-        descricao_assunto: visita.descricao_assunto || null,
-        quem_indicou: visita.quem_indicou || null,
-        origem_visita: visita.origem_visita || null,
-        status: visita.status,
-        responsavel_tratativa: visita.responsavel_tratativa || null,
-        observacoes: visita.observacoes || null,
-        cadastrado_por: nomeUsuario || "",
+        assunto: visita.assunto, descricao_assunto: visita.descricao_assunto || null,
+        quem_indicou: visita.quem_indicou || null, origem_visita: visita.origem_visita || null,
+        status: visita.status, responsavel_tratativa: visita.responsavel_tratativa || null,
+        observacoes: visita.observacoes || null, cadastrado_por: nomeUsuario || "",
       });
-
       if (visitaError) throw visitaError;
 
-      toast({ title: "✅ Visita registrada com sucesso!" });
+      toast({ title: "✅ Visita registrada!" });
       navigate("/");
     } catch (err: any) {
-      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
     }
     setSaving(false);
   };
@@ -288,11 +298,9 @@ export default function NovaVisita() {
       <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</label>
       <div className="relative">
         <input
-          type={type}
-          value={value}
+          type={type} value={value}
           onChange={(e) => onChange(e.target.value)}
-          readOnly={readonly}
-          placeholder={placeholder}
+          readOnly={readonly} placeholder={placeholder}
           className={cn(
             "w-full h-11 rounded-xl bg-card border border-border px-4 text-sm shadow-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow",
             readonly && "opacity-60 bg-muted"
@@ -308,16 +316,22 @@ export default function NovaVisita() {
   }) => (
     <div className="space-y-1">
       <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full h-11 rounded-xl bg-card border border-border px-4 text-sm shadow-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow appearance-none"
-      >
+      <select value={value} onChange={(e) => onChange(e.target.value)}
+        className="w-full h-11 rounded-xl bg-card border border-border px-4 text-sm shadow-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow appearance-none">
         <option value="">{placeholder || "Selecione…"}</option>
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
     </div>
   );
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Aguardando": return "text-yellow-600 dark:text-yellow-400";
+      case "Em andamento": return "text-blue-600 dark:text-blue-400";
+      case "Resolvido": return "text-emerald-600 dark:text-emerald-400";
+      default: return "text-muted-foreground";
+    }
+  };
 
   return (
     <AppLayout>
@@ -328,91 +342,138 @@ export default function NovaVisita() {
         <h2 className="text-xl font-bold">Nova Visita</h2>
       </div>
 
-      {/* ── CPF Input ── */}
+      {/* ── Search (CPF or Name) ── */}
       {!pessoaId && (
         <div className="card-section mb-4 animate-fade-in">
-          <p className="text-sm font-semibold mb-2">1. Digite o CPF do visitante</p>
-          <div className="relative">
-            <input
-              type="text"
-              value={cpfInput}
-              onChange={(e) => !cpfLocked && handleCPFChange(e.target.value)}
-              readOnly={cpfLocked}
-              placeholder="000.000.000-00"
-              className={cn(
-                "w-full h-12 rounded-xl bg-card border border-border px-4 pr-12 text-lg shadow-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow font-mono",
-                cpfLocked && "opacity-70 bg-muted"
-              )}
-              maxLength={14}
-              inputMode="numeric"
-            />
-            {searching && <Loader2 size={18} className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-primary" />}
-            {cpfLocked && !searching && (
-              <button onClick={clearCPF} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-primary/10 transition">
+          <p className="text-sm font-semibold mb-2">Buscar visitante (CPF ou Nome)</p>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => !locked && handleInputChange(e.target.value)}
+                readOnly={locked}
+                placeholder="Digite CPF ou nome…"
+                className={cn(
+                  "w-full h-12 rounded-xl bg-card border border-border px-4 pr-12 text-base shadow-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow",
+                  locked && "opacity-70 bg-muted"
+                )}
+                onKeyDown={(e) => e.key === "Enter" && !locked && handleSearch()}
+              />
+              {searching && <Loader2 size={18} className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-primary" />}
+            </div>
+            {locked ? (
+              <button onClick={clearSearch} className="h-12 px-4 rounded-xl border border-border text-sm font-medium active:scale-95 transition-transform">
                 Trocar
+              </button>
+            ) : (
+              <button onClick={handleSearch} disabled={searching || !searchInput.trim()}
+                className="h-12 px-4 rounded-xl gradient-primary text-white font-semibold active:scale-95 transition-transform disabled:opacity-50">
+                <Search size={18} />
               </button>
             )}
           </div>
 
-          {/* Status badge */}
+          {/* Status feedback */}
           {pessoaStatus === "found" && (
-            <div className="flex items-center gap-2 mt-2 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 size={16} />
-              <span className="text-sm font-medium">Pessoa já cadastrada — dados preenchidos automaticamente</span>
+            <div className="flex items-center gap-2 mt-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+              <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{pessoa.nome}</p>
+                <p className="text-xs text-emerald-600/70 dark:text-emerald-400/70">
+                  Pessoa já cadastrada — preencha os dados da visita abaixo
+                </p>
+              </div>
             </div>
           )}
           {pessoaStatus === "api" && (
-            <div className="flex items-center gap-2 mt-2 text-blue-600 dark:text-blue-400">
-              <User size={16} />
-              <span className="text-sm font-medium">Nome encontrado via CPF — complete os demais dados</span>
+            <div className="flex items-center gap-2 mt-3 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+              <User size={18} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
+              <p className="text-sm text-blue-700 dark:text-blue-300">Nome encontrado: <strong>{pessoa.nome}</strong> — complete os dados</p>
             </div>
           )}
-          {pessoaStatus === "new" && cpfLocked && (
-            <div className="flex items-center gap-2 mt-2 text-yellow-600 dark:text-yellow-400">
-              <AlertCircle size={16} />
-              <span className="text-sm font-medium">CPF não encontrado — preencha os dados abaixo</span>
+          {pessoaStatus === "new" && locked && (
+            <div className="flex items-center gap-2 mt-3 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+              <AlertCircle size={18} className="text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
+              <p className="text-sm text-yellow-700 dark:text-yellow-300">Pessoa não encontrada — preencha o cadastro abaixo</p>
             </div>
           )}
 
-          {!cpfLocked && !searching && (
-            <button onClick={skipCPF} className="w-full text-center text-xs text-muted-foreground mt-2 py-1.5 hover:text-foreground transition-colors">
-              Não tem CPF? Pular esta etapa
+          {!locked && !searching && (
+            <button onClick={() => { setPessoaStatus("new"); setLocked(true); setShowForm(true); }}
+              className="w-full text-center text-xs text-muted-foreground mt-2 py-1.5 hover:text-foreground transition-colors">
+              Cadastrar sem CPF
             </button>
           )}
         </div>
       )}
 
-      {/* ── Form (appears after CPF search or skip) ── */}
+      {/* ── Visit History (if person found) ── */}
+      {pessoaStatus === "found" && visitHistory.length > 0 && (
+        <div className="card-section mb-4 animate-fade-in">
+          <p className="text-sm font-semibold mb-2">Histórico de visitas ({visitHistory.length})</p>
+          <div className="space-y-2">
+            {visitHistory.map((v) => (
+              <div key={v.id} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
+                <div>
+                  <p className="text-xs font-medium">{v.assunto || "–"}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {v.data_hora ? new Date(v.data_hora).toLocaleDateString("pt-BR") : "–"}
+                  </p>
+                </div>
+                <span className={cn("text-[10px] font-semibold", getStatusColor(v.status))}>
+                  {v.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Form ── */}
       {showForm && (
         <div className="space-y-4 animate-fade-in">
 
-          {/* Dados Pessoais */}
-          <div className="card-section">
-            <p className="text-sm font-semibold mb-3 text-primary">Dados Pessoais</p>
-            <div className="space-y-3">
-              <InputField label="Nome completo *" value={pessoa.nome} onChange={(v) => setPessoa({ ...pessoa, nome: v })} placeholder="Nome do visitante" />
-              <InputField label="Data de nascimento" value={pessoa.data_nascimento} onChange={(v) => setPessoa({ ...pessoa, data_nascimento: v })} type="date" />
-              <InputField label="Telefone / WhatsApp" value={pessoa.telefone} onChange={(v) => setPessoa({ ...pessoa, telefone: maskPhone(v) })} placeholder="(00) 00000-0000" />
-              <InputField label="E-mail" value={pessoa.email} onChange={(v) => setPessoa({ ...pessoa, email: v })} type="email" placeholder="email@exemplo.com" />
-            </div>
-          </div>
-
-          {/* Dados Eleitorais */}
-          <div className="card-section">
-            <p className="text-sm font-semibold mb-3 text-primary">Dados Eleitorais</p>
-            <div className="space-y-3">
-              <InputField label="Título de eleitor" value={pessoa.titulo_eleitor} onChange={(v) => setPessoa({ ...pessoa, titulo_eleitor: maskTitulo(v) })} placeholder="0000 0000 0000" />
-              <div className="grid grid-cols-2 gap-3">
-                <InputField label="Zona eleitoral" value={pessoa.zona_eleitoral} onChange={(v) => setPessoa({ ...pessoa, zona_eleitoral: v.replace(/\D/g, "") })} placeholder="Ex: 42" />
-                <InputField label="Seção" value={pessoa.secao_eleitoral} onChange={(v) => setPessoa({ ...pessoa, secao_eleitoral: v.replace(/\D/g, "") })} placeholder="Ex: 123" />
+          {/* Person Data - only for new or admin editing */}
+          {(formMode === "full" || isAdmin) && (
+            <>
+              <div className="card-section">
+                <p className="text-sm font-semibold mb-3 text-primary">Dados Pessoais</p>
+                <div className="space-y-3">
+                  <InputField label="Nome completo *" value={pessoa.nome} onChange={(v) => setPessoa({ ...pessoa, nome: v })} placeholder="Nome do visitante" />
+                  <InputField label="Data de nascimento" value={pessoa.data_nascimento} onChange={(v) => setPessoa({ ...pessoa, data_nascimento: v })} type="date" />
+                  <InputField label="Telefone / WhatsApp" value={pessoa.telefone} onChange={(v) => setPessoa({ ...pessoa, telefone: maskPhone(v) })} placeholder="(00) 00000-0000" />
+                  <InputField label="E-mail" value={pessoa.email} onChange={(v) => setPessoa({ ...pessoa, email: v })} type="email" placeholder="email@exemplo.com" />
+                </div>
               </div>
-              <InputField label="Município" value={pessoa.municipio} onChange={(v) => setPessoa({ ...pessoa, municipio: v })} placeholder="Cidade" />
-              <SelectField label="UF" value={pessoa.uf} onChange={(v) => setPessoa({ ...pessoa, uf: v })} options={UF_OPTIONS} />
-              <SelectField label="Situação do título" value={pessoa.situacao_titulo} onChange={(v) => setPessoa({ ...pessoa, situacao_titulo: v })} options={["Regular", "Cancelado", "Suspenso", "Não possui"]} placeholder="Selecione…" />
-            </div>
-          </div>
 
-          {/* Dados da Visita */}
+              <div className="card-section">
+                <p className="text-sm font-semibold mb-3 text-primary">Dados Eleitorais</p>
+                <div className="space-y-3">
+                  <InputField label="Título de eleitor" value={pessoa.titulo_eleitor} onChange={(v) => setPessoa({ ...pessoa, titulo_eleitor: maskTitulo(v) })} placeholder="0000 0000 0000" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <InputField label="Zona" value={pessoa.zona_eleitoral} onChange={(v) => setPessoa({ ...pessoa, zona_eleitoral: v.replace(/\D/g, "") })} placeholder="Ex: 42" />
+                    <InputField label="Seção" value={pessoa.secao_eleitoral} onChange={(v) => setPessoa({ ...pessoa, secao_eleitoral: v.replace(/\D/g, "") })} placeholder="Ex: 123" />
+                  </div>
+                  <InputField label="Município" value={pessoa.municipio} onChange={(v) => setPessoa({ ...pessoa, municipio: v })} placeholder="Cidade" />
+                  <SelectField label="UF" value={pessoa.uf} onChange={(v) => setPessoa({ ...pessoa, uf: v })} options={UF_OPTIONS} />
+                  <SelectField label="Situação do título" value={pessoa.situacao_titulo} onChange={(v) => setPessoa({ ...pessoa, situacao_titulo: v })} options={["Regular", "Cancelado", "Suspenso", "Não possui"]} />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Person summary for recepcao when person found */}
+          {formMode === "visit_only" && !isAdmin && (
+            <div className="card-section">
+              <p className="text-sm font-semibold mb-2 text-primary">Visitante</p>
+              <p className="text-sm font-medium">{pessoa.nome}</p>
+              {pessoa.telefone && <p className="text-xs text-muted-foreground">Tel: {pessoa.telefone}</p>}
+              {pessoa.municipio && <p className="text-xs text-muted-foreground">{pessoa.municipio} - {pessoa.uf}</p>}
+            </div>
+          )}
+
+          {/* Visit Data - always visible */}
           <div className="card-section">
             <p className="text-sm font-semibold mb-3 text-primary">Dados da Visita</p>
             <div className="space-y-3">
@@ -420,20 +481,16 @@ export default function NovaVisita() {
               <SelectField label="Assunto *" value={visita.assunto} onChange={(v) => setVisita({ ...visita, assunto: v })} options={ASSUNTOS} placeholder="Selecione o assunto" />
               <div className="space-y-1">
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Descrição</label>
-                <textarea
-                  value={visita.descricao_assunto}
-                  onChange={(e) => setVisita({ ...visita, descricao_assunto: e.target.value })}
-                  rows={2}
-                  placeholder="Detalhes sobre o assunto…"
-                  className="w-full rounded-xl bg-card border border-border px-4 py-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow resize-none"
-                />
+                <textarea value={visita.descricao_assunto} onChange={(e) => setVisita({ ...visita, descricao_assunto: e.target.value })}
+                  rows={2} placeholder="Detalhes…"
+                  className="w-full rounded-xl bg-card border border-border px-4 py-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow resize-none" />
               </div>
-              <InputField label="Quem indicou" value={visita.quem_indicou} onChange={(v) => setVisita({ ...visita, quem_indicou: v })} placeholder="Nome de quem indicou" />
-              <SelectField label="Como chegou ao comitê?" value={visita.origem_visita} onChange={(v) => setVisita({ ...visita, origem_visita: v })} options={ORIGENS_VISITA} />
+              <InputField label="Quem indicou" value={visita.quem_indicou} onChange={(v) => setVisita({ ...visita, quem_indicou: v })} placeholder="Nome" />
+              <SelectField label="Como chegou?" value={visita.origem_visita} onChange={(v) => setVisita({ ...visita, origem_visita: v })} options={ORIGENS_VISITA} />
             </div>
           </div>
 
-          {/* Tratativa */}
+          {/* Status/Tratativa */}
           <div className="card-section">
             <p className="text-sm font-semibold mb-3 text-primary">Tratativa</p>
             <div className="space-y-3">
@@ -441,23 +498,16 @@ export default function NovaVisita() {
               <InputField label="Responsável" value={visita.responsavel_tratativa} onChange={(v) => setVisita({ ...visita, responsavel_tratativa: v })} />
               <div className="space-y-1">
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Observações</label>
-                <textarea
-                  value={visita.observacoes}
-                  onChange={(e) => setVisita({ ...visita, observacoes: e.target.value })}
-                  rows={3}
-                  placeholder="Observações gerais…"
-                  className="w-full rounded-xl bg-card border border-border px-4 py-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow resize-none"
-                />
+                <textarea value={visita.observacoes} onChange={(e) => setVisita({ ...visita, observacoes: e.target.value })}
+                  rows={3} placeholder="Observações…"
+                  className="w-full rounded-xl bg-card border border-border px-4 py-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow resize-none" />
               </div>
             </div>
           </div>
 
           {/* Save */}
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="w-full h-12 rounded-xl font-semibold text-white gradient-primary shadow-lg shadow-pink-500/25 active:scale-[0.98] transition-transform disabled:opacity-70 flex items-center justify-center gap-2"
-          >
+          <button onClick={handleSave} disabled={saving}
+            className="w-full h-12 rounded-xl font-semibold text-white gradient-primary shadow-lg shadow-pink-500/25 active:scale-[0.98] transition-transform disabled:opacity-70 flex items-center justify-center gap-2">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             {saving ? "Salvando…" : "Salvar visita"}
           </button>

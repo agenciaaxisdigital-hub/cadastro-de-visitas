@@ -2,11 +2,15 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+export type AppRole = "admin" | "recepcao";
+
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   nomeUsuario: string;
+  role: AppRole | null;
   loading: boolean;
+  isAdmin: boolean;
   signIn: (username: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
@@ -16,6 +20,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [nomeUsuario, setNomeUsuario] = useState("");
+  const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,9 +28,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setLoading(false);
       if (session?.user) {
-        fetchNomeUsuario(session.user.id);
+        fetchUserData(session.user.id);
       } else {
         setNomeUsuario("");
+        setRole(null);
       }
     });
 
@@ -33,24 +39,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setLoading(false);
       if (session?.user) {
-        fetchNomeUsuario(session.user.id);
+        fetchUserData(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  async function fetchNomeUsuario(userId: string) {
-    const { data } = await supabase
+  async function fetchUserData(userId: string) {
+    // Fetch username
+    const { data: usuario } = await supabase
       .from("usuarios")
       .select("nome_usuario")
       .eq("user_id", userId)
       .maybeSingle();
-    if (data) setNomeUsuario(data.nome_usuario);
+    if (usuario) setNomeUsuario(usuario.nome_usuario);
+
+    // Fetch role via RPC
+    const { data: userRole } = await supabase.rpc("get_user_role", { _user_id: userId });
+    if (userRole) {
+      setRole(userRole as AppRole);
+    }
   }
 
   const signIn = async (username: string, password: string): Promise<{ error: string | null }> => {
-    // Look up email by username
     const { data: usuario } = await supabase
       .from("usuarios")
       .select("email")
@@ -78,7 +90,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, nomeUsuario, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{
+      session, user: session?.user ?? null,
+      nomeUsuario, role, loading,
+      isAdmin: role === "admin",
+      signIn, signOut,
+    }}>
       {children}
     </AuthContext.Provider>
   );
