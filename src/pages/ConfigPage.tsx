@@ -41,14 +41,16 @@ export default function ConfigPage() {
   };
 
   const handleCreateUser = async () => {
-    if (!newUser.nome_usuario || !newUser.email || !newUser.password) {
-      toast({ title: "Preencha todos os campos", variant: "destructive" });
+    if (!newUser.nome_usuario || !newUser.password) {
+      toast({ title: "Preencha nome e senha", variant: "destructive" });
       return;
     }
     if (newUser.password.length < 6) {
       toast({ title: "Senha deve ter pelo menos 6 caracteres", variant: "destructive" });
       return;
     }
+
+    const autoEmail = `${newUser.nome_usuario.toLowerCase().replace(/\s+/g, ".")}@interno.app`;
 
     setCreatingUser(true);
     try {
