@@ -310,51 +310,16 @@ export default function NovaVisita() {
         </div>
       )}
 
-      {/* ── CPF ── */}
-      {!pessoaId && (
+      {/* Status badges */}
+      {pessoaStatus === "found" && (
         <div className="card-section mb-4 animate-fade-in">
-          <div className="flex items-center gap-2 mb-3">
-            <Search size={16} className="text-primary" />
-            <p className="text-sm font-bold text-primary uppercase tracking-wide">CPF</p>
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+            <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-bold">{pessoa.nome}</p>
+              <p className="text-xs text-muted-foreground">Pessoa cadastrada — registre a visita abaixo</p>
+            </div>
           </div>
-          <div className="relative">
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => handleInputChange(e.target.value)}
-              placeholder="000.000.000-00"
-              className="w-full h-12 rounded-lg bg-background border border-border px-4 text-base outline-none focus:ring-2 focus:ring-primary/30 transition-shadow font-mono"
-              maxLength={14}
-              inputMode="numeric"
-            />
-            {searching && <Loader2 size={18} className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-primary" />}
-          </div>
-
-          {/* Status badges */}
-          {pessoaStatus === "found" && (
-            <div className="flex items-center gap-2 mt-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-              <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-bold">{pessoa.nome}</p>
-                <p className="text-xs text-muted-foreground">Pessoa cadastrada — registre a visita abaixo</p>
-              </div>
-            </div>
-          )}
-          {pessoaStatus === "api" && (
-            <div className="flex items-center gap-2 mt-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-              <User size={18} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
-              <p className="text-sm"><strong>{pessoa.nome}</strong> — complete o cadastro</p>
-            </div>
-          )}
-          {pessoaStatus === "new" && locked && (
-            <div className="flex items-center gap-2 mt-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-              <AlertCircle size={18} className="text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-bold">CPF não encontrado na base</p>
-                <p className="text-xs text-muted-foreground">Essa pessoa ainda não foi cadastrada. Preencha os dados abaixo.</p>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -393,6 +358,10 @@ export default function NovaVisita() {
               </div>
               <div className="space-y-4">
                 <InputField label="Nome completo *" value={pessoa.nome} onChange={(v) => setPessoa({ ...pessoa, nome: v })} placeholder="Nome da liderança" />
+                <InputField label="CPF" value={maskCPF(pessoa.cpf)} onChange={(v) => {
+                  const raw = unmaskCPF(v);
+                  if (raw.length <= 11) setPessoa({ ...pessoa, cpf: raw });
+                }} placeholder="000.000.000-00" />
                 <div className="grid grid-cols-2 gap-3">
                   <InputField label="Telefone" value={pessoa.telefone} onChange={(v) => setPessoa({ ...pessoa, telefone: maskPhone(v) })} placeholder="(00) 0000-0000" />
                   <InputField label="WhatsApp" value={pessoa.whatsapp} onChange={(v) => setPessoa({ ...pessoa, whatsapp: maskPhone(v) })} placeholder="(00) 00000-0000" />
