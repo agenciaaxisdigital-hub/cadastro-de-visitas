@@ -67,7 +67,16 @@ export default function PessoaDetalhePage() {
         )}
 
         <div className="card-section">
-          <p className="section-title">Visitas ({visitas.length})</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="section-title mb-0">Visitas ({visitas.length})</p>
+            <button
+              onClick={() => navigate(`/nova-visita-existente/${id}`)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline active:scale-95 transition-transform"
+            >
+              <Plus size={14} />
+              Nova Visita
+            </button>
+          </div>
           {visitas.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma visita registrada.</p>
           ) : (
@@ -75,15 +84,26 @@ export default function PessoaDetalhePage() {
               <button
                 key={v.id}
                 onClick={() => navigate(`/visita/${v.id}`)}
-                className="w-full text-left py-2 border-b border-border last:border-0 active:scale-[0.98] transition-transform"
+                className="w-full text-left py-3 border-b border-border last:border-0 active:scale-[0.98] transition-transform"
               >
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">{v.assunto || "–"}</span>
-                  <span className={cn("text-[10px] px-2 py-0.5 rounded-full", getStatusColor(v.status))}>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-semibold">{v.assunto || "–"}</span>
+                  <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold", getStatusColor(v.status))}>
                     {v.status}
                   </span>
                 </div>
-                <span className="text-[10px] text-muted-foreground">{formatDateTime(v.data_hora)}</span>
+                <p className="text-xs text-muted-foreground">
+                  📅 {formatDateTime(v.data_hora)}
+                </p>
+                {v.quem_indicou && (
+                  <p className="text-xs text-muted-foreground">Indicado por: {v.quem_indicou}</p>
+                )}
+                {v.descricao_assunto && (
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{v.descricao_assunto}</p>
+                )}
+                {v.cadastrado_por && (
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">Cadastrado por: {v.cadastrado_por}</p>
+                )}
               </button>
             ))
           )}
