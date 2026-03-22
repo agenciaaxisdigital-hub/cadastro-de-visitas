@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ShapeGridBackground } from "@/components/ShapeGridBackground";
 import candidataImg from "@/assets/candidata.jpg";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2, User } from "lucide-react";
+import { Loader2, User, Eye, EyeOff } from "lucide-react";
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -11,6 +11,7 @@ export default function Login() {
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,20 +97,29 @@ export default function Login() {
             <label className="text-[11px] uppercase tracking-widest text-white/50">
               Senha
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full h-12 rounded-xl px-4 text-white outline-none transition-all"
-              style={{
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.1)",
-              }}
-              onFocus={(e) => (e.target.style.borderColor = "rgba(236,72,153,0.5)")}
-              onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
-              placeholder="••••••••"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full h-12 rounded-xl pl-4 pr-11 text-white outline-none transition-all"
+                style={{
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                }}
+                onFocus={(e) => (e.target.style.borderColor = "rgba(236,72,153,0.5)")}
+                onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer">
