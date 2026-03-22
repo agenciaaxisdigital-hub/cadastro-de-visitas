@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
-import { Search } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import { maskCPF } from "@/lib/masks";
 
 export default function PessoasPage() {
