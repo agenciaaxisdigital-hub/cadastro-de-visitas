@@ -7,7 +7,7 @@ const allTabs = [
   { path: "/", icon: Home, label: "Cadastro", roles: ["admin", "recepcao"] },
   { path: "/visitas", icon: ClipboardList, label: "Visitas", roles: ["admin", "recepcao"] },
   { path: "/pessoas", icon: Users, label: "Pessoas", roles: ["admin"] },
-  { path: "/config", icon: Settings, label: "Config", roles: ["admin", "recepcao"] },
+  { path: "/config", icon: Settings, label: "Configurações", roles: ["admin", "recepcao"] },
 ];
 
 export function BottomNav() {
