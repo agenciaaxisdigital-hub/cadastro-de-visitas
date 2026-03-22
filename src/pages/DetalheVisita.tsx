@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { ArrowLeft, Pencil, Trash2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getStatusColor, STATUS_OPTIONS } from "@/lib/constants";
+import { getStatusColor } from "@/lib/constants";
 import { maskCPF, formatDateTime } from "@/lib/masks";
 import { useToast } from "@/hooks/use-toast";
 import {
