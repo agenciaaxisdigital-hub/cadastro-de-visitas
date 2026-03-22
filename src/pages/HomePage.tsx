@@ -101,9 +101,9 @@ export default function HomePage() {
         <div className="text-center py-16 text-muted-foreground">
           <p className="text-lg mb-1">Nenhuma visita encontrada</p>
           <p className="text-sm">
-            {searchQuery || statusFilter !== "Todas"
-              ? "Tente mudar os filtros."
-              : "Toque em + para registrar a primeira visita."}
+            {searchQuery
+              ? "Tente outro termo de busca."
+              : "Nenhuma visita neste período."}
           </p>
         </div>
       ) : (
