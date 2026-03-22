@@ -36,16 +36,11 @@ export default function PessoaDetalhePage() {
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-muted active:scale-95">
-            <ArrowLeft size={20} />
-          </button>
-          <h2 className="text-xl font-bold">{pessoa.nome || "Sem nome"}</h2>
-        </div>
-        <button onClick={() => navigate(`/editar-pessoa/${id}`)} className="p-2 rounded-full hover:bg-muted active:scale-95">
-          <Pencil size={18} />
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-muted active:scale-95">
+          <ArrowLeft size={20} />
         </button>
+        <h2 className="text-xl font-bold">{pessoa.nome || "Sem nome"}</h2>
       </div>
 
       <div className="space-y-4">
