@@ -26,8 +26,8 @@ export default function ConfigPage() {
         <div className="card-section">
           <p className="section-title">Conta</p>
           <div className="flex justify-between text-sm py-1">
-            <span className="text-muted-foreground">E-mail</span>
-            <span className="font-medium">{user?.email}</span>
+            <span className="text-muted-foreground">Usuário</span>
+            <span className="font-medium">{nomeUsuario || "–"}</span>
           </div>
         </div>
 
