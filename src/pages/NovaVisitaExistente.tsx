@@ -128,14 +128,13 @@ export default function NovaVisitaExistente() {
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-foreground">Motivo / Assunto *</label>
-            <select
+            <input
+              type="text"
               value={assunto}
               onChange={(e) => setAssunto(e.target.value)}
-              className="w-full h-12 rounded-lg bg-background border border-border px-4 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow appearance-none"
-            >
-              <option value="">Selecione o motivo</option>
-              {ASSUNTOS.map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
+              placeholder="Descreva o motivo da visita"
+              className="w-full h-12 rounded-lg bg-background border border-border px-4 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow placeholder:text-muted-foreground/50"
+            />
           </div>
         </div>
       </div>

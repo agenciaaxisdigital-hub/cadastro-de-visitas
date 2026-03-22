@@ -421,7 +421,7 @@ export default function NovaVisita() {
             </div>
             <div className="space-y-4">
               <InputField label="Data e hora" value={visita.data_hora} onChange={(v) => setVisita({ ...visita, data_hora: v })} type="datetime-local" />
-              <SelectField label="Assunto *" value={visita.assunto} onChange={(v) => setVisita({ ...visita, assunto: v })} options={ASSUNTOS} placeholder="Selecione o assunto" />
+              <InputField label="Assunto *" value={visita.assunto} onChange={(v) => setVisita({ ...visita, assunto: v })} placeholder="Descreva o motivo da visita" />
               <InputField label="Quem indicou" value={visita.quem_indicou} onChange={(v) => setVisita({ ...visita, quem_indicou: v })} placeholder="Nome" />
             </div>
           </div>
