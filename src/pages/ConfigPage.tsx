@@ -41,8 +41,8 @@ export default function ConfigPage() {
   };
 
   const handleCreateUser = async () => {
-    if (!newUser.nome_usuario || !newUser.email || !newUser.password) {
-      toast({ title: "Preencha todos os campos", variant: "destructive" });
+    if (!newUser.nome_usuario || !newUser.password) {
+      toast({ title: "Preencha nome e senha", variant: "destructive" });
       return;
     }
     if (newUser.password.length < 6) {
@@ -50,12 +50,14 @@ export default function ConfigPage() {
       return;
     }
 
+    const autoEmail = `${newUser.nome_usuario.toLowerCase().replace(/\s+/g, ".")}@interno.app`;
+
     setCreatingUser(true);
     try {
       // Create auth user via admin endpoint (we'll use signUp as workaround)
       // Note: In production, this should be an edge function with service_role
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newUser.email,
+        email: autoEmail,
         password: newUser.password,
         options: { data: { nome: newUser.nome_usuario } },
       });
@@ -67,7 +69,7 @@ export default function ConfigPage() {
       const { error: userError } = await supabase.from("usuarios").insert({
         user_id: authData.user.id,
         nome_usuario: newUser.nome_usuario,
-        email: newUser.email,
+        email: autoEmail,
       });
       if (userError) throw userError;
 
@@ -137,9 +139,6 @@ export default function ConfigPage() {
               <div className="space-y-3 p-3 rounded-xl bg-muted/50 mb-3 animate-fade-in">
                 <input type="text" placeholder="Nome do usuário" value={newUser.nome_usuario}
                   onChange={(e) => setNewUser({ ...newUser, nome_usuario: e.target.value })}
-                  className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
-                <input type="email" placeholder="E-mail (interno)" value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                   className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
                 <input type="password" placeholder="Senha" value={newUser.password}
                   onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
