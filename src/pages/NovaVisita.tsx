@@ -9,6 +9,17 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
+function getBrasiliaDateTime() {
+  const now = new Date();
+  const brasilia = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  const y = brasilia.getFullYear();
+  const m = String(brasilia.getMonth() + 1).padStart(2, "0");
+  const d = String(brasilia.getDate()).padStart(2, "0");
+  const h = String(brasilia.getHours()).padStart(2, "0");
+  const min = String(brasilia.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${d}T${h}:${min}`;
+}
+
 interface DadosPessoa {
   cpf: string;
   nome: string;
@@ -96,7 +107,7 @@ export default function NovaVisita() {
 
   const [pessoa, setPessoa] = useState<DadosPessoa>({ ...EMPTY_PESSOA });
   const [visita, setVisita] = useState<DadosVisita>({
-    data_hora: new Date().toISOString().slice(0, 16),
+    data_hora: getBrasiliaDateTime(),
     assunto: "", descricao_assunto: "", quem_indicou: "",
     origem_visita: "", status: "Aguardando",
     responsavel_tratativa: "", observacoes: "",
