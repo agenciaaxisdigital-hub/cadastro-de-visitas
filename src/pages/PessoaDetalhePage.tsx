@@ -91,12 +91,7 @@ export default function PessoaDetalhePage() {
                 onClick={() => navigate(`/visita/${v.id}`)}
                 className="w-full text-left py-3 border-b border-border last:border-0 active:scale-[0.98] transition-transform"
               >
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-semibold">{v.assunto || "–"}</span>
-                  <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold", getStatusColor(v.status))}>
-                    {v.status}
-                  </span>
-                </div>
+                <span className="text-sm font-semibold">{v.assunto || "–"}</span>
                 <p className="text-xs text-muted-foreground">
                   📅 {formatDateTime(v.data_hora)}
                 </p>
