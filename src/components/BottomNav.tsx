@@ -1,17 +1,21 @@
 import { Home, ClipboardList, Users, Settings } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
-const tabs = [
-  { path: "/", icon: Home, label: "Início" },
-  { path: "/visitas", icon: ClipboardList, label: "Visitas" },
-  { path: "/pessoas", icon: Users, label: "Pessoas" },
-  { path: "/config", icon: Settings, label: "Config" },
+const allTabs = [
+  { path: "/", icon: Home, label: "Início", roles: ["admin"] },
+  { path: "/visitas", icon: ClipboardList, label: "Visitas", roles: ["admin", "recepcao"] },
+  { path: "/pessoas", icon: Users, label: "Pessoas", roles: ["admin"] },
+  { path: "/config", icon: Settings, label: "Config", roles: ["admin", "recepcao"] },
 ];
 
 export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { role } = useAuth();
+
+  const tabs = allTabs.filter(t => !role || t.roles.includes(role));
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border safe-bottom">

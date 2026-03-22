@@ -6,7 +6,6 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Login from "./pages/Login";
 import HomePage from "./pages/HomePage";
 import NovaVisita from "./pages/NovaVisita";
-// NovaVisitaExistente merged into NovaVisita
 import DetalheVisita from "./pages/DetalheVisita";
 import PessoasPage from "./pages/PessoasPage";
 import PessoaDetalhePage from "./pages/PessoaDetalhePage";
@@ -17,7 +16,7 @@ import { useEffect } from "react";
 const queryClient = new QueryClient();
 
 function ProtectedRoutes() {
-  const { session, loading } = useAuth();
+  const { session, loading, role } = useAuth();
 
   if (loading) {
     return (
@@ -29,15 +28,19 @@ function ProtectedRoutes() {
 
   if (!session) return <Login />;
 
+  // Recepção default route is /visitas
+  const defaultRoute = role === "recepcao" ? "/visitas" : "/";
+
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={role === "recepcao" ? <Navigate to="/visitas" replace /> : <HomePage />} />
       <Route path="/visitas" element={<HomePage />} />
       <Route path="/nova-visita" element={<NovaVisita />} />
       <Route path="/nova-visita-existente/:pessoaId" element={<NovaVisita />} />
       <Route path="/visita/:id" element={<DetalheVisita />} />
-      <Route path="/pessoas" element={<PessoasPage />} />
-      <Route path="/pessoa/:id" element={<PessoaDetalhePage />} />
+      {/* Admin-only routes */}
+      <Route path="/pessoas" element={role === "admin" ? <PessoasPage /> : <Navigate to="/visitas" replace />} />
+      <Route path="/pessoa/:id" element={role === "admin" ? <PessoaDetalhePage /> : <Navigate to="/visitas" replace />} />
       <Route path="/config" element={<ConfigPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
