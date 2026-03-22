@@ -26,13 +26,6 @@ export default function PessoaDetalhePage() {
   if (loading) return <AppLayout><div className="card-section animate-pulse h-40" /></AppLayout>;
   if (!pessoa) return <AppLayout><p className="text-center py-16 text-muted-foreground">Pessoa não encontrada.</p></AppLayout>;
 
-  const InfoRow = ({ label, value }: { label: string; value?: string | null }) =>
-    value ? (
-      <div className="flex justify-between text-sm py-1">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-medium text-right">{value}</span>
-      </div>
-    ) : null;
 
   return (
     <AppLayout>
