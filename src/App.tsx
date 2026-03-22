@@ -8,6 +8,8 @@ import HomePage from "./pages/HomePage";
 import NovaVisita from "./pages/NovaVisita";
 import NovaVisitaExistente from "./pages/NovaVisitaExistente";
 import DetalheVisita from "./pages/DetalheVisita";
+import EditarVisita from "./pages/EditarVisita";
+import EditarPessoa from "./pages/EditarPessoa";
 import PessoasPage from "./pages/PessoasPage";
 import PessoaDetalhePage from "./pages/PessoaDetalhePage";
 import ConfigPage from "./pages/ConfigPage";
