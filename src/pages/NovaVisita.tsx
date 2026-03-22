@@ -1,15 +1,13 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
-import { ArrowLeft, Search, Loader2, ChevronDown, ChevronUp, Lock } from "lucide-react";
+import { ArrowLeft, Loader2, Lock, CheckCircle2, AlertCircle, User } from "lucide-react";
 import { maskCPF, unmaskCPF, maskPhone, maskTitulo, validateCPF, formatDate } from "@/lib/masks";
 import { ASSUNTOS, ORIGENS_VISITA, STATUS_OPTIONS, UF_OPTIONS } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-
-type Step = "cpf" | "form";
 
 interface DadosPessoa {
   cpf: string;
@@ -25,6 +23,8 @@ interface DadosPessoa {
   secao_eleitoral: string;
   municipio: string;
   uf: string;
+  situacao_titulo: string;
+  observacoes_gerais: string;
 }
 
 interface DadosVisita {
@@ -38,34 +38,28 @@ interface DadosVisita {
   observacoes: string;
 }
 
+const EMPTY_PESSOA: DadosPessoa = {
+  cpf: "", nome: "", data_nascimento: "", telefone: "", email: "",
+  whatsapp: "", instagram: "", outras_redes: "",
+  titulo_eleitor: "", zona_eleitoral: "", secao_eleitoral: "",
+  municipio: "", uf: "", situacao_titulo: "", observacoes_gerais: "",
+};
+
 export default function NovaVisita() {
   const navigate = useNavigate();
+  const { pessoaId } = useParams<{ pessoaId?: string }>();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { nomeUsuario } = useAuth();
 
-  const [step, setStep] = useState<Step>("cpf");
   const [cpfInput, setCpfInput] = useState("");
   const [searching, setSearching] = useState(false);
-  const [cpfReadonly, setCpfReadonly] = useState(false);
-  const [existingPessoa, setExistingPessoa] = useState<any>(null);
-  const [apiData, setApiData] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [existingPessoaId, setExistingPessoaId] = useState<string | null>(pessoaId || null);
+  const [cpfLocked, setCpfLocked] = useState(false);
+  const [showForm, setShowForm] = useState(!!pessoaId);
+  const [pessoaStatus, setPessoaStatus] = useState<"idle" | "found" | "new" | "api">("idle");
 
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    pessoais: true,
-    redes: true,
-    eleitorais: true,
-    visita: true,
-    tratativa: true,
-  });
-
-  const [pessoa, setPessoa] = useState<DadosPessoa>({
-    cpf: "", nome: "", data_nascimento: "", telefone: "", email: "",
-    whatsapp: "", instagram: "", outras_redes: "",
-    titulo_eleitor: "", zona_eleitoral: "", secao_eleitoral: "",
-    municipio: "", uf: "",
-  });
-
+  const [pessoa, setPessoa] = useState<DadosPessoa>({ ...EMPTY_PESSOA });
   const [visita, setVisita] = useState<DadosVisita>({
     data_hora: new Date().toISOString().slice(0, 16),
     assunto: "", descricao_assunto: "", quem_indicou: "",
@@ -73,12 +67,58 @@ export default function NovaVisita() {
     responsavel_tratativa: "", observacoes: "",
   });
 
-  const toggleSection = (key: string) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  // If pessoaId is provided (existing person), load their data
+  useEffect(() => {
+    if (pessoaId) {
+      loadExistingPessoa(pessoaId);
+    }
+  }, [pessoaId]);
+
+  async function loadExistingPessoa(id: string) {
+    const { data } = await supabase.from("pessoas").select("*").eq("id", id).maybeSingle();
+    if (data) {
+      setPessoa({
+        cpf: data.cpf || "",
+        nome: data.nome || "",
+        data_nascimento: data.data_nascimento || "",
+        telefone: data.telefone || "",
+        email: data.email || "",
+        whatsapp: data.whatsapp || "",
+        instagram: data.instagram || "",
+        outras_redes: data.outras_redes || "",
+        titulo_eleitor: data.titulo_eleitor || "",
+        zona_eleitoral: data.zona_eleitoral || "",
+        secao_eleitoral: data.secao_eleitoral || "",
+        municipio: data.municipio || "",
+        uf: data.uf || "",
+        situacao_titulo: data.situacao_titulo || "",
+        observacoes_gerais: data.observacoes_gerais || "",
+      });
+      setCpfInput(data.cpf && !data.cpf.startsWith("TEMP") ? maskCPF(data.cpf) : "");
+      setCpfLocked(true);
+      setExistingPessoaId(id);
+      setPessoaStatus("found");
+      setShowForm(true);
+    }
+  }
+
+  // Auto-search when CPF reaches 11 digits
+  const handleCPFChange = (value: string) => {
+    const masked = maskCPF(value);
+    setCpfInput(masked);
+    const raw = unmaskCPF(masked);
+
+    if (raw.length === 11) {
+      searchCPF(raw);
+    } else {
+      setPessoaStatus("idle");
+      setShowForm(false);
+      setExistingPessoaId(null);
+      setPessoa({ ...EMPTY_PESSOA });
+    }
   };
 
-  const handleCPFSearch = async () => {
-    const raw = unmaskCPF(cpfInput);
+  const searchCPF = useCallback(async (raw: string) => {
     if (!validateCPF(raw)) {
       toast({ title: "CPF inválido", description: "Verifique os números digitados.", variant: "destructive" });
       return;
@@ -86,63 +126,82 @@ export default function NovaVisita() {
 
     setSearching(true);
 
-    // Check local DB first
+    // 1) Check local DB
     const { data: existente } = await supabase
       .from("pessoas")
-      .select("*, visitas(count)")
+      .select("*")
       .eq("cpf", raw)
       .maybeSingle();
 
     if (existente) {
-      setExistingPessoa(existente);
+      setPessoa({
+        cpf: existente.cpf,
+        nome: existente.nome || "",
+        data_nascimento: existente.data_nascimento || "",
+        telefone: existente.telefone || "",
+        email: existente.email || "",
+        whatsapp: existente.whatsapp || "",
+        instagram: existente.instagram || "",
+        outras_redes: existente.outras_redes || "",
+        titulo_eleitor: existente.titulo_eleitor || "",
+        zona_eleitoral: existente.zona_eleitoral || "",
+        secao_eleitoral: existente.secao_eleitoral || "",
+        municipio: existente.municipio || "",
+        uf: existente.uf || "",
+        situacao_titulo: existente.situacao_titulo || "",
+        observacoes_gerais: existente.observacoes_gerais || "",
+      });
+      setExistingPessoaId(existente.id);
+      setPessoaStatus("found");
+      setCpfLocked(true);
+      setShowForm(true);
       setSearching(false);
       return;
     }
 
-    // Try Brasil API
+    // 2) Try Brasil API for name/birth
     try {
       const resp = await fetch(`https://brasilapi.com.br/api/cpf/v1/${raw}`);
       if (resp.ok) {
         const data = await resp.json();
-        setApiData(data);
-        setPessoa((prev) => ({
+        setPessoa(prev => ({
           ...prev,
           cpf: raw,
           nome: data.nome || "",
           data_nascimento: data.data_nascimento ? data.data_nascimento.slice(0, 10) : "",
         }));
+        setPessoaStatus("api");
       } else {
-        setPessoa((prev) => ({ ...prev, cpf: raw }));
-        setStep("form");
-        setCpfReadonly(true);
+        setPessoa(prev => ({ ...prev, cpf: raw }));
+        setPessoaStatus("new");
       }
     } catch {
-      toast({ title: "Erro na busca", description: "Não foi possível buscar os dados. Preencha manualmente." });
-      setPessoa((prev) => ({ ...prev, cpf: raw }));
-      setStep("form");
-      setCpfReadonly(true);
+      setPessoa(prev => ({ ...prev, cpf: raw }));
+      setPessoaStatus("new");
     }
 
+    setCpfLocked(true);
+    setShowForm(true);
     setSearching(false);
-  };
+  }, [toast]);
 
-  const confirmApiData = () => {
-    setCpfReadonly(true);
-    setStep("form");
-    setApiData(null);
-  };
-
-  const useExistingPessoa = () => {
-    navigate(`/nova-visita-existente/${existingPessoa.id}`);
+  const clearCPF = () => {
+    setCpfInput("");
+    setCpfLocked(false);
+    setPessoaStatus("idle");
+    setShowForm(false);
+    setExistingPessoaId(null);
+    setPessoa({ ...EMPTY_PESSOA });
   };
 
   const skipCPF = () => {
-    setPessoa((prev) => ({ ...prev, cpf: "" }));
-    setStep("form");
+    setPessoa(prev => ({ ...prev, cpf: "" }));
+    setPessoaStatus("new");
+    setShowForm(true);
   };
 
   const handleSave = async () => {
-    if (!pessoa.nome && !pessoa.cpf) {
+    if (!pessoa.nome) {
       toast({ title: "Nome obrigatório", description: "Preencha o nome do visitante.", variant: "destructive" });
       return;
     }
@@ -154,76 +213,67 @@ export default function NovaVisita() {
     setSaving(true);
 
     try {
-      // Upsert pessoa
       let pessoaId: string;
-      if (pessoa.cpf) {
-        const { data: existing } = await supabase.from("pessoas").select("id").eq("cpf", pessoa.cpf).maybeSingle();
-        if (existing) {
-          pessoaId = existing.id;
-          await supabase.from("pessoas").update({
-            nome: pessoa.nome,
-            telefone: pessoa.telefone,
-            email: pessoa.email,
-            whatsapp: pessoa.whatsapp,
-            instagram: pessoa.instagram,
-            outras_redes: pessoa.outras_redes,
-            titulo_eleitor: pessoa.titulo_eleitor,
-            zona_eleitoral: pessoa.zona_eleitoral,
-            secao_eleitoral: pessoa.secao_eleitoral,
-            municipio: pessoa.municipio,
-            uf: pessoa.uf,
-            data_nascimento: pessoa.data_nascimento || null,
-            atualizado_em: new Date().toISOString(),
-          }).eq("id", pessoaId);
-        } else {
-          const { data: novaPessoa, error } = await supabase.from("pessoas").insert({
-            cpf: pessoa.cpf,
-            nome: pessoa.nome,
-            telefone: pessoa.telefone,
-            email: pessoa.email,
-            whatsapp: pessoa.whatsapp,
-            instagram: pessoa.instagram,
-            outras_redes: pessoa.outras_redes,
-            titulo_eleitor: pessoa.titulo_eleitor,
-            zona_eleitoral: pessoa.zona_eleitoral,
-            secao_eleitoral: pessoa.secao_eleitoral,
-            municipio: pessoa.municipio,
-            uf: pessoa.uf,
-            data_nascimento: pessoa.data_nascimento || null,
-          }).select("id").single();
-          if (error) throw error;
-          pessoaId = novaPessoa.id;
-        }
-      } else {
-        // No CPF — generate a temp one based on timestamp
-        const tempCpf = `TEMP${Date.now()}`;
-        const { data: novaPessoa, error } = await supabase.from("pessoas").insert({
-          cpf: tempCpf,
+
+      if (existingPessoaId) {
+        pessoaId = existingPessoaId;
+        // Update existing pessoa data
+        await supabase.from("pessoas").update({
           nome: pessoa.nome,
-          telefone: pessoa.telefone,
-          email: pessoa.email,
+          telefone: pessoa.telefone || null,
+          email: pessoa.email || null,
+          whatsapp: pessoa.whatsapp || null,
+          instagram: pessoa.instagram || null,
+          outras_redes: pessoa.outras_redes || null,
+          titulo_eleitor: pessoa.titulo_eleitor || null,
+          zona_eleitoral: pessoa.zona_eleitoral || null,
+          secao_eleitoral: pessoa.secao_eleitoral || null,
+          municipio: pessoa.municipio || null,
+          uf: pessoa.uf || null,
+          data_nascimento: pessoa.data_nascimento || null,
+          situacao_titulo: pessoa.situacao_titulo || null,
+          observacoes_gerais: pessoa.observacoes_gerais || null,
+          atualizado_em: new Date().toISOString(),
+        }).eq("id", pessoaId);
+      } else {
+        const cpfToSave = pessoa.cpf || `TEMP${Date.now()}`;
+        const { data: novaPessoa, error } = await supabase.from("pessoas").insert({
+          cpf: cpfToSave,
+          nome: pessoa.nome,
+          telefone: pessoa.telefone || null,
+          email: pessoa.email || null,
+          whatsapp: pessoa.whatsapp || null,
+          instagram: pessoa.instagram || null,
+          outras_redes: pessoa.outras_redes || null,
+          titulo_eleitor: pessoa.titulo_eleitor || null,
+          zona_eleitoral: pessoa.zona_eleitoral || null,
+          secao_eleitoral: pessoa.secao_eleitoral || null,
+          municipio: pessoa.municipio || null,
+          uf: pessoa.uf || null,
+          data_nascimento: pessoa.data_nascimento || null,
+          situacao_titulo: pessoa.situacao_titulo || null,
+          observacoes_gerais: pessoa.observacoes_gerais || null,
         }).select("id").single();
         if (error) throw error;
         pessoaId = novaPessoa.id;
       }
 
-      // Insert visita
       const { error: visitaError } = await supabase.from("visitas").insert({
         pessoa_id: pessoaId,
         data_hora: visita.data_hora ? new Date(visita.data_hora).toISOString() : new Date().toISOString(),
         assunto: visita.assunto,
-        descricao_assunto: visita.descricao_assunto,
-        quem_indicou: visita.quem_indicou,
-        origem_visita: visita.origem_visita,
+        descricao_assunto: visita.descricao_assunto || null,
+        quem_indicou: visita.quem_indicou || null,
+        origem_visita: visita.origem_visita || null,
         status: visita.status,
-        responsavel_tratativa: visita.responsavel_tratativa,
-        observacoes: visita.observacoes,
-        cadastrado_por: user?.email || "",
+        responsavel_tratativa: visita.responsavel_tratativa || null,
+        observacoes: visita.observacoes || null,
+        cadastrado_por: nomeUsuario || "",
       });
 
       if (visitaError) throw visitaError;
 
-      toast({ title: "Visita registrada com sucesso!" });
+      toast({ title: "✅ Visita registrada com sucesso!" });
       navigate("/");
     } catch (err: any) {
       toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
@@ -231,25 +281,12 @@ export default function NovaVisita() {
     setSaving(false);
   };
 
-  const SectionHeader = ({ title, sectionKey }: { title: string; sectionKey: string }) => (
-    <button
-      onClick={() => toggleSection(sectionKey)}
-      className="w-full flex items-center justify-between py-2"
-    >
-      <span className="section-title">{title}</span>
-      {openSections[sectionKey] ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
-    </button>
-  );
-
-  const InputField = ({
-    label, value, onChange, placeholder, type = "text", readonly = false, icon,
-  }: {
-    label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; readonly?: boolean; icon?: React.ReactNode;
+  const InputField = ({ label, value, onChange, placeholder, type = "text", readonly = false }: {
+    label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; readonly?: boolean;
   }) => (
     <div className="space-y-1">
-      <label className="label-micro">{label}</label>
+      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</label>
       <div className="relative">
-        {icon && <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{icon}</div>}
         <input
           type={type}
           value={value}
@@ -258,8 +295,7 @@ export default function NovaVisita() {
           placeholder={placeholder}
           className={cn(
             "w-full h-11 rounded-xl bg-card border border-border px-4 text-sm shadow-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow",
-            icon && "pl-10",
-            readonly && "opacity-60"
+            readonly && "opacity-60 bg-muted"
           )}
         />
         {readonly && <Lock size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />}
@@ -267,13 +303,11 @@ export default function NovaVisita() {
     </div>
   );
 
-  const SelectField = ({
-    label, value, onChange, options, placeholder,
-  }: {
+  const SelectField = ({ label, value, onChange, options, placeholder }: {
     label: string; value: string; onChange: (v: string) => void; options: string[]; placeholder?: string;
   }) => (
     <div className="space-y-1">
-      <label className="label-micro">{label}</label>
+      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -285,175 +319,140 @@ export default function NovaVisita() {
     </div>
   );
 
-  const TextareaField = ({
-    label, value, onChange, rows = 3, placeholder,
-  }: {
-    label: string; value: string; onChange: (v: string) => void; rows?: number; placeholder?: string;
-  }) => (
-    <div className="space-y-1">
-      <label className="label-micro">{label}</label>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={rows}
-        placeholder={placeholder}
-        className="w-full rounded-xl bg-card border border-border px-4 py-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow resize-none"
-      />
-    </div>
-  );
-
   return (
     <AppLayout>
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-5">
         <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-muted active:scale-95 transition">
           <ArrowLeft size={20} />
         </button>
         <h2 className="text-xl font-bold">Nova Visita</h2>
       </div>
 
-      {step === "cpf" && !apiData && !existingPessoa && (
-        <div className="card-section animate-fade-in">
-          <p className="text-sm font-medium mb-3">Digite o CPF do visitante</p>
-          <div className="relative mb-3">
+      {/* ── CPF Input ── */}
+      {!pessoaId && (
+        <div className="card-section mb-4 animate-fade-in">
+          <p className="text-sm font-semibold mb-2">1. Digite o CPF do visitante</p>
+          <div className="relative">
             <input
               type="text"
               value={cpfInput}
-              onChange={(e) => setCpfInput(maskCPF(e.target.value))}
+              onChange={(e) => !cpfLocked && handleCPFChange(e.target.value)}
+              readOnly={cpfLocked}
               placeholder="000.000.000-00"
-              className="w-full h-12 rounded-xl bg-card border border-border px-4 pr-12 text-lg shadow-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
+              className={cn(
+                "w-full h-12 rounded-xl bg-card border border-border px-4 pr-12 text-lg shadow-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow font-mono",
+                cpfLocked && "opacity-70 bg-muted"
+              )}
               maxLength={14}
+              inputMode="numeric"
             />
-            <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          </div>
-          <button
-            onClick={handleCPFSearch}
-            disabled={searching}
-            className="w-full h-12 rounded-xl font-semibold text-white gradient-primary shadow-lg shadow-pink-500/25 active:scale-[0.98] transition-transform disabled:opacity-70 flex items-center justify-center gap-2"
-          >
-            {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            {searching ? "Buscando…" : "Buscar dados"}
-          </button>
-          <button onClick={skipCPF} className="w-full text-center text-sm text-muted-foreground mt-3 py-2">
-            Não tem CPF? Pular esta etapa
-          </button>
-        </div>
-      )}
-
-      {apiData && (
-        <div className="card-section animate-fade-in">
-          <div className="flex items-center gap-2 text-emerald-500 mb-2">
-            <span className="text-lg">✅</span>
-            <p className="font-semibold text-sm">Dados encontrados</p>
-          </div>
-          <div className="space-y-1 text-sm">
-            <p><span className="text-muted-foreground">Nome:</span> {apiData.nome}</p>
-            {apiData.data_nascimento && (
-              <p><span className="text-muted-foreground">Data de nasc.:</span> {formatDate(apiData.data_nascimento)}</p>
+            {searching && <Loader2 size={18} className="absolute right-4 top-1/2 -translate-y-1/2 animate-spin text-primary" />}
+            {cpfLocked && !searching && (
+              <button onClick={clearCPF} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-primary font-semibold px-2 py-1 rounded-lg hover:bg-primary/10 transition">
+                Trocar
+              </button>
             )}
-            <p><span className="text-muted-foreground">Situação CPF:</span> {apiData.situacao?.descricao || "Regular"}</p>
           </div>
-          <p className="text-xs text-yellow-500 mt-2">⚠️ Dados eleitorais precisam ser preenchidos manualmente</p>
-          <div className="flex gap-2 mt-3">
-            <button onClick={confirmApiData} className="flex-1 h-10 rounded-xl font-semibold text-white gradient-primary active:scale-[0.98] transition-transform text-sm">
-              Confirmar e continuar
+
+          {/* Status badge */}
+          {pessoaStatus === "found" && (
+            <div className="flex items-center gap-2 mt-2 text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 size={16} />
+              <span className="text-sm font-medium">Pessoa já cadastrada — dados preenchidos automaticamente</span>
+            </div>
+          )}
+          {pessoaStatus === "api" && (
+            <div className="flex items-center gap-2 mt-2 text-blue-600 dark:text-blue-400">
+              <User size={16} />
+              <span className="text-sm font-medium">Nome encontrado via CPF — complete os demais dados</span>
+            </div>
+          )}
+          {pessoaStatus === "new" && cpfLocked && (
+            <div className="flex items-center gap-2 mt-2 text-yellow-600 dark:text-yellow-400">
+              <AlertCircle size={16} />
+              <span className="text-sm font-medium">CPF não encontrado — preencha os dados abaixo</span>
+            </div>
+          )}
+
+          {!cpfLocked && !searching && (
+            <button onClick={skipCPF} className="w-full text-center text-xs text-muted-foreground mt-2 py-1.5 hover:text-foreground transition-colors">
+              Não tem CPF? Pular esta etapa
             </button>
-            <button onClick={() => { setApiData(null); setCpfReadonly(true); setStep("form"); }} className="flex-1 h-10 rounded-xl border border-border text-sm font-medium active:scale-[0.98] transition-transform">
-              Corrigir
-            </button>
-          </div>
+          )}
         </div>
       )}
 
-      {existingPessoa && (
-        <div className="card-section animate-fade-in">
-          <div className="flex items-center gap-2 text-yellow-500 mb-2">
-            <span className="text-lg">⚠️</span>
-            <p className="font-semibold text-sm">Pessoa já cadastrada</p>
-          </div>
-          <p className="text-sm font-medium">{existingPessoa.nome}</p>
-          <p className="text-xs text-muted-foreground">Total de visitas: {existingPessoa.visitas?.[0]?.count || 0}</p>
-          <div className="flex gap-2 mt-3">
-            <button onClick={useExistingPessoa} className="flex-1 h-10 rounded-xl font-semibold text-white gradient-primary active:scale-[0.98] transition-transform text-sm">
-              Registrar nova visita
-            </button>
-            <button onClick={() => navigate(`/pessoa/${existingPessoa.id}`)} className="flex-1 h-10 rounded-xl border border-border text-sm font-medium active:scale-[0.98] transition-transform">
-              Ver perfil
-            </button>
-          </div>
-        </div>
-      )}
-
-      {step === "form" && (
+      {/* ── Form (appears after CPF search or skip) ── */}
+      {showForm && (
         <div className="space-y-4 animate-fade-in">
-          {/* Seção 1 — Dados Pessoais */}
+
+          {/* Dados Pessoais */}
           <div className="card-section">
-            <SectionHeader title="Dados Pessoais" sectionKey="pessoais" />
-            {openSections.pessoais && (
-              <div className="space-y-3">
-                <InputField label="CPF" value={maskCPF(pessoa.cpf)} onChange={() => {}} readonly={cpfReadonly} />
-                <InputField label="Nome completo" value={pessoa.nome} onChange={(v) => setPessoa({ ...pessoa, nome: v })} placeholder="Nome do visitante" />
-                <InputField label="Data de nascimento" value={pessoa.data_nascimento} onChange={(v) => setPessoa({ ...pessoa, data_nascimento: v })} type="date" />
-                <InputField label="Telefone" value={pessoa.telefone} onChange={(v) => setPessoa({ ...pessoa, telefone: maskPhone(v) })} placeholder="(00) 00000-0000" />
-                <InputField label="E-mail" value={pessoa.email} onChange={(v) => setPessoa({ ...pessoa, email: v })} type="email" placeholder="email@exemplo.com" />
-              </div>
-            )}
+            <p className="text-sm font-semibold mb-3 text-primary">Dados Pessoais</p>
+            <div className="space-y-3">
+              <InputField label="Nome completo *" value={pessoa.nome} onChange={(v) => setPessoa({ ...pessoa, nome: v })} placeholder="Nome do visitante" />
+              <InputField label="Data de nascimento" value={pessoa.data_nascimento} onChange={(v) => setPessoa({ ...pessoa, data_nascimento: v })} type="date" />
+              <InputField label="Telefone / WhatsApp" value={pessoa.telefone} onChange={(v) => setPessoa({ ...pessoa, telefone: maskPhone(v) })} placeholder="(00) 00000-0000" />
+              <InputField label="E-mail" value={pessoa.email} onChange={(v) => setPessoa({ ...pessoa, email: v })} type="email" placeholder="email@exemplo.com" />
+            </div>
           </div>
 
-          {/* Seção 2 — Redes Sociais */}
+          {/* Dados Eleitorais */}
           <div className="card-section">
-            <SectionHeader title="Redes Sociais" sectionKey="redes" />
-            {openSections.redes && (
-              <div className="space-y-3">
-                <InputField label="WhatsApp" value={pessoa.whatsapp} onChange={(v) => setPessoa({ ...pessoa, whatsapp: maskPhone(v) })} placeholder="(00) 00000-0000" />
-                <InputField label="Instagram" value={pessoa.instagram} onChange={(v) => setPessoa({ ...pessoa, instagram: v.startsWith("@") ? v : `@${v}` })} placeholder="@usuario" />
-                <TextareaField label="Outras redes / links" value={pessoa.outras_redes} onChange={(v) => setPessoa({ ...pessoa, outras_redes: v })} rows={2} />
+            <p className="text-sm font-semibold mb-3 text-primary">Dados Eleitorais</p>
+            <div className="space-y-3">
+              <InputField label="Título de eleitor" value={pessoa.titulo_eleitor} onChange={(v) => setPessoa({ ...pessoa, titulo_eleitor: maskTitulo(v) })} placeholder="0000 0000 0000" />
+              <div className="grid grid-cols-2 gap-3">
+                <InputField label="Zona eleitoral" value={pessoa.zona_eleitoral} onChange={(v) => setPessoa({ ...pessoa, zona_eleitoral: v.replace(/\D/g, "") })} placeholder="Ex: 42" />
+                <InputField label="Seção" value={pessoa.secao_eleitoral} onChange={(v) => setPessoa({ ...pessoa, secao_eleitoral: v.replace(/\D/g, "") })} placeholder="Ex: 123" />
               </div>
-            )}
+              <InputField label="Município" value={pessoa.municipio} onChange={(v) => setPessoa({ ...pessoa, municipio: v })} placeholder="Cidade" />
+              <SelectField label="UF" value={pessoa.uf} onChange={(v) => setPessoa({ ...pessoa, uf: v })} options={UF_OPTIONS} />
+              <SelectField label="Situação do título" value={pessoa.situacao_titulo} onChange={(v) => setPessoa({ ...pessoa, situacao_titulo: v })} options={["Regular", "Cancelado", "Suspenso", "Não possui"]} placeholder="Selecione…" />
+            </div>
           </div>
 
-          {/* Seção 3 — Dados Eleitorais */}
+          {/* Dados da Visita */}
           <div className="card-section">
-            <SectionHeader title="Dados Eleitorais" sectionKey="eleitorais" />
-            {openSections.eleitorais && (
-              <div className="space-y-3">
-                <InputField label="Título de eleitor" value={pessoa.titulo_eleitor} onChange={(v) => setPessoa({ ...pessoa, titulo_eleitor: maskTitulo(v) })} placeholder="0000 0000 0000" />
-                <div className="grid grid-cols-2 gap-3">
-                  <InputField label="Zona" value={pessoa.zona_eleitoral} onChange={(v) => setPessoa({ ...pessoa, zona_eleitoral: v.replace(/\D/g, "") })} placeholder="000" />
-                  <InputField label="Seção" value={pessoa.secao_eleitoral} onChange={(v) => setPessoa({ ...pessoa, secao_eleitoral: v.replace(/\D/g, "") })} placeholder="000" />
-                </div>
-                <InputField label="Município" value={pessoa.municipio} onChange={(v) => setPessoa({ ...pessoa, municipio: v })} />
-                <SelectField label="UF" value={pessoa.uf} onChange={(v) => setPessoa({ ...pessoa, uf: v })} options={UF_OPTIONS} />
+            <p className="text-sm font-semibold mb-3 text-primary">Dados da Visita</p>
+            <div className="space-y-3">
+              <InputField label="Data e hora" value={visita.data_hora} onChange={(v) => setVisita({ ...visita, data_hora: v })} type="datetime-local" />
+              <SelectField label="Assunto *" value={visita.assunto} onChange={(v) => setVisita({ ...visita, assunto: v })} options={ASSUNTOS} placeholder="Selecione o assunto" />
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Descrição</label>
+                <textarea
+                  value={visita.descricao_assunto}
+                  onChange={(e) => setVisita({ ...visita, descricao_assunto: e.target.value })}
+                  rows={2}
+                  placeholder="Detalhes sobre o assunto…"
+                  className="w-full rounded-xl bg-card border border-border px-4 py-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow resize-none"
+                />
               </div>
-            )}
+              <InputField label="Quem indicou" value={visita.quem_indicou} onChange={(v) => setVisita({ ...visita, quem_indicou: v })} placeholder="Nome de quem indicou" />
+              <SelectField label="Como chegou ao comitê?" value={visita.origem_visita} onChange={(v) => setVisita({ ...visita, origem_visita: v })} options={ORIGENS_VISITA} />
+            </div>
           </div>
 
-          {/* Seção 4 — Dados da Visita */}
+          {/* Tratativa */}
           <div className="card-section">
-            <SectionHeader title="Dados da Visita" sectionKey="visita" />
-            {openSections.visita && (
-              <div className="space-y-3">
-                <InputField label="Data e hora" value={visita.data_hora} onChange={(v) => setVisita({ ...visita, data_hora: v })} type="datetime-local" />
-                <SelectField label="Assunto *" value={visita.assunto} onChange={(v) => setVisita({ ...visita, assunto: v })} options={ASSUNTOS} placeholder="Selecione o assunto" />
-                <TextareaField label="Descrição do assunto" value={visita.descricao_assunto} onChange={(v) => setVisita({ ...visita, descricao_assunto: v })} />
-                <InputField label="Quem indicou" value={visita.quem_indicou} onChange={(v) => setVisita({ ...visita, quem_indicou: v })} placeholder="Nome de quem indicou" />
-                <SelectField label="Como chegou até o comitê?" value={visita.origem_visita} onChange={(v) => setVisita({ ...visita, origem_visita: v })} options={ORIGENS_VISITA} />
+            <p className="text-sm font-semibold mb-3 text-primary">Tratativa</p>
+            <div className="space-y-3">
+              <SelectField label="Status" value={visita.status} onChange={(v) => setVisita({ ...visita, status: v })} options={STATUS_OPTIONS} />
+              <InputField label="Responsável" value={visita.responsavel_tratativa} onChange={(v) => setVisita({ ...visita, responsavel_tratativa: v })} />
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Observações</label>
+                <textarea
+                  value={visita.observacoes}
+                  onChange={(e) => setVisita({ ...visita, observacoes: e.target.value })}
+                  rows={3}
+                  placeholder="Observações gerais…"
+                  className="w-full rounded-xl bg-card border border-border px-4 py-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow resize-none"
+                />
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Seção 5 — Tratativa */}
-          <div className="card-section">
-            <SectionHeader title="Tratativa" sectionKey="tratativa" />
-            {openSections.tratativa && (
-              <div className="space-y-3">
-                <SelectField label="Status" value={visita.status} onChange={(v) => setVisita({ ...visita, status: v })} options={STATUS_OPTIONS} />
-                <InputField label="Responsável pela tratativa" value={visita.responsavel_tratativa} onChange={(v) => setVisita({ ...visita, responsavel_tratativa: v })} />
-                <TextareaField label="Observações" value={visita.observacoes} onChange={(v) => setVisita({ ...visita, observacoes: v })} rows={4} />
-              </div>
-            )}
-          </div>
-
-          {/* Footer buttons */}
+          {/* Save */}
           <button
             onClick={handleSave}
             disabled={saving}
@@ -462,7 +461,7 @@ export default function NovaVisita() {
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             {saving ? "Salvando…" : "Salvar visita"}
           </button>
-          <button onClick={() => navigate(-1)} className="w-full h-10 rounded-xl text-sm text-muted-foreground active:scale-95 transition-transform">
+          <button onClick={() => navigate(-1)} className="w-full h-10 rounded-xl text-sm text-muted-foreground active:scale-95 transition-transform mb-4">
             Cancelar
           </button>
         </div>
