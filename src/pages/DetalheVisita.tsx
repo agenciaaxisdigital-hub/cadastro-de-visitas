@@ -40,8 +40,6 @@ export default function DetalheVisita() {
 
     if (data) {
       setVisita(data);
-      setStatusUpdate(data.status);
-
       // Fetch history
       if (data.pessoa_id) {
         const { data: hist } = await supabase
