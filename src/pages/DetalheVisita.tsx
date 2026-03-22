@@ -135,36 +135,8 @@ export default function DetalheVisita() {
           <InfoRow label="Descrição" value={visita.descricao_assunto} />
           <InfoRow label="Quem indicou" value={visita.quem_indicou} />
           <InfoRow label="Como chegou" value={visita.origem_visita} />
-        </div>
-
-        {/* Tratativa */}
-        <div className="card-section animate-fade-in" style={{ animationDelay: "180ms" }}>
-          <p className="section-title">Tratativa</p>
-          <div className="flex items-center gap-2 mb-2">
-            <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full", getStatusColor(visita.status))}>
-              ● {visita.status}
-            </span>
-          </div>
-          <InfoRow label="Responsável" value={visita.responsavel_tratativa} />
           <InfoRow label="Observações" value={visita.observacoes} />
           <InfoRow label="Cadastrado por" value={visita.cadastrado_por} />
-
-          <div className="flex gap-2 mt-3">
-            <select
-              value={statusUpdate}
-              onChange={(e) => setStatusUpdate(e.target.value)}
-              className="flex-1 h-10 rounded-xl bg-card border border-border px-3 text-sm appearance-none"
-            >
-              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <button
-              onClick={handleStatusUpdate}
-              disabled={updatingStatus || statusUpdate === visita.status}
-              className="h-10 px-4 rounded-xl font-semibold text-white gradient-primary active:scale-[0.98] transition-transform disabled:opacity-50 text-sm"
-            >
-              {updatingStatus ? <Loader2 className="w-4 h-4 animate-spin" /> : "Alterar"}
-            </button>
-          </div>
         </div>
 
         {/* Histórico */}
