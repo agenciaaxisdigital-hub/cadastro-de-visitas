@@ -26,9 +26,6 @@ export default function HomePage() {
       .select("*, pessoas(nome, cpf)")
       .order("data_hora", { ascending: false });
 
-    if (statusFilter !== "Todas") {
-      query = query.eq("status", statusFilter);
-    }
 
     const now = new Date();
     if (periodFilter === "Hoje") {
