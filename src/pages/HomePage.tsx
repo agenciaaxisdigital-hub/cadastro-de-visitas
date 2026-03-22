@@ -71,23 +71,6 @@ export default function HomePage() {
         />
       </div>
 
-      {/* Status filters */}
-      <div className="flex gap-2 overflow-x-auto hide-scrollbar mb-3">
-        {STATUS_FILTERS.map((s) => (
-          <button
-            key={s}
-            onClick={() => setStatusFilter(s)}
-            className={cn(
-              "flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors active:scale-95",
-              statusFilter === s
-                ? "gradient-primary text-white"
-                : "bg-muted text-muted-foreground"
-            )}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
 
       {/* Period filter */}
       <div className="flex gap-2 mb-4">
