@@ -9,6 +9,17 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
+function getBrasiliaDateTime() {
+  const now = new Date();
+  const brasilia = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  const y = brasilia.getFullYear();
+  const m = String(brasilia.getMonth() + 1).padStart(2, "0");
+  const d = String(brasilia.getDate()).padStart(2, "0");
+  const h = String(brasilia.getHours()).padStart(2, "0");
+  const min = String(brasilia.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${d}T${h}:${min}`;
+}
+
 export default function NovaVisitaExistente() {
   const { pessoaId } = useParams<{ pessoaId: string }>();
   const navigate = useNavigate();
@@ -20,7 +31,7 @@ export default function NovaVisitaExistente() {
   const [saving, setSaving] = useState(false);
   const [visitHistory, setVisitHistory] = useState<any[]>([]);
 
-  const [dataHora, setDataHora] = useState(new Date().toISOString().slice(0, 16));
+  const [dataHora, setDataHora] = useState(getBrasiliaDateTime());
   const [assunto, setAssunto] = useState("");
 
   useEffect(() => {
