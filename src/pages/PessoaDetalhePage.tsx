@@ -79,39 +79,44 @@ export default function PessoaDetalhePage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {visitas.map((v, i) => (
-                <button
-                  key={v.id}
-                  onClick={() => navigate(`/visita/${v.id}`)}
-                  className="w-full text-left flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/50 active:scale-[0.98] transition-all"
-                >
-                  {/* Número da visita */}
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-bold text-primary">{visitas.length - i}</span>
+              {visitas.map((v, i) => {
+                const num = visitas.length - i;
+                return (
+                  <div
+                    key={v.id}
+                    className="p-3 rounded-lg border border-border/50"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-[11px] font-bold text-primary">{num}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold">{v.assunto || "–"}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {v.data_hora
+                            ? new Date(v.data_hora).toLocaleDateString("pt-BR", {
+                                weekday: "short", day: "2-digit", month: "short", year: "numeric",
+                                hour: "2-digit", minute: "2-digit",
+                              })
+                            : "–"}
+                        </p>
+                        {v.descricao_assunto && (
+                          <p className="text-xs text-muted-foreground mt-1">{v.descricao_assunto}</p>
+                        )}
+                        {v.quem_indicou && (
+                          <p className="text-[10px] text-muted-foreground/70 mt-0.5">Indicado por: {v.quem_indicou}</p>
+                        )}
+                        {v.observacoes && (
+                          <p className="text-[10px] text-muted-foreground/70 mt-0.5">Obs: {v.observacoes}</p>
+                        )}
+                        {v.cadastrado_por && (
+                          <p className="text-[10px] text-muted-foreground/50 mt-0.5">Por: {v.cadastrado_por}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{v.assunto || "–"}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {v.data_hora
-                        ? new Date(v.data_hora).toLocaleDateString("pt-BR", {
-                            weekday: "short",
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "–"}
-                    </p>
-                    {v.quem_indicou && (
-                      <p className="text-[10px] text-muted-foreground/70 truncate">Indicado por: {v.quem_indicou}</p>
-                    )}
-                  </div>
-
-                  <ChevronRight size={16} className="text-muted-foreground/40 flex-shrink-0" />
-                </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
