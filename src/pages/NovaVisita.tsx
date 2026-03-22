@@ -425,32 +425,7 @@ export default function NovaVisita() {
             <div className="space-y-4">
               <InputField label="Data e hora" value={visita.data_hora} onChange={(v) => setVisita({ ...visita, data_hora: v })} type="datetime-local" />
               <SelectField label="Assunto *" value={visita.assunto} onChange={(v) => setVisita({ ...visita, assunto: v })} options={ASSUNTOS} placeholder="Selecione o assunto" />
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">Descrição</label>
-                <textarea value={visita.descricao_assunto} onChange={(e) => setVisita({ ...visita, descricao_assunto: e.target.value })}
-                  rows={2} placeholder="Detalhes…"
-                  className="w-full rounded-lg bg-background border border-border px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow resize-none placeholder:text-muted-foreground/50" />
-              </div>
               <InputField label="Quem indicou" value={visita.quem_indicou} onChange={(v) => setVisita({ ...visita, quem_indicou: v })} placeholder="Nome" />
-              <SelectField label="Como chegou?" value={visita.origem_visita} onChange={(v) => setVisita({ ...visita, origem_visita: v })} options={ORIGENS_VISITA} />
-            </div>
-          </div>
-
-          {/* TRATATIVA */}
-          <div className="card-section">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-primary">⚙️</span>
-              <p className="text-sm font-bold text-primary uppercase tracking-wide">Tratativa</p>
-            </div>
-            <div className="space-y-4">
-              <SelectField label="Status" value={visita.status} onChange={(v) => setVisita({ ...visita, status: v })} options={STATUS_OPTIONS} />
-              <InputField label="Responsável" value={visita.responsavel_tratativa} onChange={(v) => setVisita({ ...visita, responsavel_tratativa: v })} />
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground">Observações</label>
-                <textarea value={visita.observacoes} onChange={(e) => setVisita({ ...visita, observacoes: e.target.value })}
-                  rows={3} placeholder="Observações…"
-                  className="w-full rounded-lg bg-background border border-border px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow resize-none placeholder:text-muted-foreground/50" />
-              </div>
             </div>
           </div>
 
