@@ -364,10 +364,7 @@ export default function NovaVisita() {
                 }} placeholder="000.000.000-00" />
                 <InputField label="WhatsApp" value={pessoa.whatsapp} onChange={(v) => setPessoa({ ...pessoa, whatsapp: maskPhone(v) })} placeholder="(00) 00000-0000" />
                 <InputField label="E-mail" value={pessoa.email} onChange={(v) => setPessoa({ ...pessoa, email: v })} type="email" placeholder="email@exemplo.com" />
-                <div className="grid grid-cols-2 gap-3">
-                  <InputField label="Instagram" value={pessoa.instagram} onChange={(v) => setPessoa({ ...pessoa, instagram: v.startsWith("@") ? v : v ? `@${v}` : "" })} placeholder="@usuario" />
-                  <InputField label="Facebook" value={pessoa.outras_redes} onChange={(v) => setPessoa({ ...pessoa, outras_redes: v })} placeholder="Nome ou link" />
-                </div>
+                <InputField label="Rede social (Instagram ou Facebook)" value={pessoa.instagram} onChange={(v) => setPessoa({ ...pessoa, instagram: v })} placeholder="@usuario ou link" />
                 <InputField label="Data de nascimento" value={pessoa.data_nascimento} onChange={(v) => setPessoa({ ...pessoa, data_nascimento: v })} type="date" />
               </div>
             </div>
