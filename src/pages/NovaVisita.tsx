@@ -379,9 +379,17 @@ export default function NovaVisita() {
           {/* DADOS ELEITORAIS */}
           {(formMode === "full" || isAdmin) && (
             <div className="card-section">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-primary">🗳️</span>
-                <p className="text-sm font-bold text-primary uppercase tracking-wide">Dados Eleitorais</p>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-primary">🗳️</span>
+                  <p className="text-sm font-bold text-primary uppercase tracking-wide">Dados Eleitorais</p>
+                </div>
+                <a href="https://www.tse.jus.br/servicos-eleitorais/autoatendimento-eleitoral#/atendimento-eleitor"
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline active:scale-95 transition-transform">
+                  <ExternalLink size={13} />
+                  Consultar TSE
+                </a>
               </div>
               <div className="space-y-4">
                 <InputField label="Título de eleitor" value={pessoa.titulo_eleitor} onChange={(v) => setPessoa({ ...pessoa, titulo_eleitor: maskTitulo(v) })} placeholder="0000 0000 0000" />
