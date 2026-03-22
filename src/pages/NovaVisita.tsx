@@ -259,37 +259,8 @@ export default function NovaVisita() {
     setSaving(false);
   };
 
-  const InputField = ({ label, value, onChange, placeholder, type = "text", readonly = false }: {
-    label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; readonly?: boolean;
-  }) => (
-    <div className="space-y-1.5">
-      <label className="text-xs font-bold text-foreground">{label}</label>
-      <div className="relative">
-        <input type={type} value={value} onChange={(e) => onChange(e.target.value)}
-          readOnly={readonly} placeholder={placeholder}
-          className={cn(
-            "w-full h-12 rounded-lg bg-background border border-border px-4 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow placeholder:text-muted-foreground/50",
-            readonly && "opacity-60 bg-muted"
-          )} />
-        {readonly && <Lock size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />}
-      </div>
-    </div>
-  );
-
-  const SelectField = ({ label, value, onChange, options, placeholder }: {
-    label: string; value: string; onChange: (v: string) => void; options: string[]; placeholder?: string;
-  }) => (
-    <div className="space-y-1.5">
-      <label className="text-xs font-bold text-foreground">{label}</label>
-      <select value={value} onChange={(e) => onChange(e.target.value)}
-        className="w-full h-12 rounded-lg bg-background border border-border px-4 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow appearance-none">
-        <option value="">{placeholder || "Selecione…"}</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </div>
-  );
-
-  const getStatusColor = (status: string) => {
+  // getStatusColor moved here, InputField/SelectField moved outside component
+  const localGetStatusColor = (status: string) => {
     switch (status) {
       case "Aguardando": return "text-yellow-600 dark:text-yellow-400";
       case "Em andamento": return "text-blue-600 dark:text-blue-400";
