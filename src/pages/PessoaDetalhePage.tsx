@@ -81,36 +81,34 @@ export default function PessoaDetalhePage() {
             <div className="space-y-2">
               {visitas.map((v, i) => {
                 const num = visitas.length - i;
+                const dataFormatada = v.data_hora
+                  ? new Date(v.data_hora).toLocaleDateString("pt-BR", {
+                      weekday: "long", day: "2-digit", month: "2-digit", year: "numeric",
+                    })
+                  : "–";
+                const hora = v.data_hora
+                  ? new Date(v.data_hora).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+                  : "";
                 return (
-                  <div
-                    key={v.id}
-                    className="p-3 rounded-lg border border-border/50"
-                  >
+                  <div key={v.id} className="p-3 rounded-lg border border-border/50">
                     <div className="flex items-start gap-3">
                       <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                         <span className="text-[11px] font-bold text-primary">{num}</span>
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 space-y-0.5">
+                        <p className="text-[11px] text-muted-foreground capitalize">{dataFormatada}{hora ? ` • ${hora}` : ""}</p>
                         <p className="text-sm font-semibold">{v.assunto || "–"}</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {v.data_hora
-                            ? new Date(v.data_hora).toLocaleDateString("pt-BR", {
-                                weekday: "short", day: "2-digit", month: "short", year: "numeric",
-                                hour: "2-digit", minute: "2-digit",
-                              })
-                            : "–"}
-                        </p>
-                        {v.descricao_assunto && (
-                          <p className="text-xs text-muted-foreground mt-1">{v.descricao_assunto}</p>
-                        )}
                         {v.quem_indicou && (
-                          <p className="text-[10px] text-muted-foreground/70 mt-0.5">Indicado por: {v.quem_indicou}</p>
+                          <p className="text-[11px] text-muted-foreground">Indicação: {v.quem_indicou}</p>
+                        )}
+                        {v.descricao_assunto && (
+                          <p className="text-[11px] text-muted-foreground">{v.descricao_assunto}</p>
                         )}
                         {v.observacoes && (
-                          <p className="text-[10px] text-muted-foreground/70 mt-0.5">Obs: {v.observacoes}</p>
+                          <p className="text-[11px] text-muted-foreground">Obs: {v.observacoes}</p>
                         )}
                         {v.cadastrado_por && (
-                          <p className="text-[10px] text-muted-foreground/50 mt-0.5">Por: {v.cadastrado_por}</p>
+                          <p className="text-[10px] text-muted-foreground/50">Por: {v.cadastrado_por}</p>
                         )}
                       </div>
                     </div>
