@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 const allTabs = [
-  { path: "/", icon: Home, label: "Início", roles: ["admin"] },
+  { path: "/", icon: Home, label: "Cadastro", roles: ["admin", "recepcao"] },
   { path: "/visitas", icon: ClipboardList, label: "Visitas", roles: ["admin", "recepcao"] },
   { path: "/pessoas", icon: Users, label: "Pessoas", roles: ["admin"] },
   { path: "/config", icon: Settings, label: "Config", roles: ["admin", "recepcao"] },
