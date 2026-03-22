@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
-import { ArrowLeft, Pencil, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getStatusColor, STATUS_OPTIONS } from "@/lib/constants";
+import { getStatusColor } from "@/lib/constants";
 import { maskCPF, formatDateTime } from "@/lib/masks";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -26,8 +26,6 @@ export default function DetalheVisita() {
   const [visita, setVisita] = useState<any>(null);
   const [historico, setHistorico] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusUpdate, setStatusUpdate] = useState("");
-  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
     fetchVisita();
@@ -42,8 +40,6 @@ export default function DetalheVisita() {
 
     if (data) {
       setVisita(data);
-      setStatusUpdate(data.status);
-
       // Fetch history
       if (data.pessoa_id) {
         const { data: hist } = await supabase
@@ -58,13 +54,6 @@ export default function DetalheVisita() {
     setLoading(false);
   }
 
-  const handleStatusUpdate = async () => {
-    setUpdatingStatus(true);
-    await supabase.from("visitas").update({ status: statusUpdate, atualizado_em: new Date().toISOString() }).eq("id", id);
-    setVisita((prev: any) => ({ ...prev, status: statusUpdate }));
-    toast({ title: "Status atualizado!" });
-    setUpdatingStatus(false);
-  };
 
   const handleDelete = async () => {
     await supabase.from("visitas").delete().eq("id", id);
@@ -146,36 +135,8 @@ export default function DetalheVisita() {
           <InfoRow label="Descrição" value={visita.descricao_assunto} />
           <InfoRow label="Quem indicou" value={visita.quem_indicou} />
           <InfoRow label="Como chegou" value={visita.origem_visita} />
-        </div>
-
-        {/* Tratativa */}
-        <div className="card-section animate-fade-in" style={{ animationDelay: "180ms" }}>
-          <p className="section-title">Tratativa</p>
-          <div className="flex items-center gap-2 mb-2">
-            <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full", getStatusColor(visita.status))}>
-              ● {visita.status}
-            </span>
-          </div>
-          <InfoRow label="Responsável" value={visita.responsavel_tratativa} />
           <InfoRow label="Observações" value={visita.observacoes} />
           <InfoRow label="Cadastrado por" value={visita.cadastrado_por} />
-
-          <div className="flex gap-2 mt-3">
-            <select
-              value={statusUpdate}
-              onChange={(e) => setStatusUpdate(e.target.value)}
-              className="flex-1 h-10 rounded-xl bg-card border border-border px-3 text-sm appearance-none"
-            >
-              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <button
-              onClick={handleStatusUpdate}
-              disabled={updatingStatus || statusUpdate === visita.status}
-              className="h-10 px-4 rounded-xl font-semibold text-white gradient-primary active:scale-[0.98] transition-transform disabled:opacity-50 text-sm"
-            >
-              {updatingStatus ? <Loader2 className="w-4 h-4 animate-spin" /> : "Alterar"}
-            </button>
-          </div>
         </div>
 
         {/* Histórico */}
