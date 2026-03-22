@@ -8,6 +8,8 @@ import HomePage from "./pages/HomePage";
 import NovaVisita from "./pages/NovaVisita";
 import NovaVisitaExistente from "./pages/NovaVisitaExistente";
 import DetalheVisita from "./pages/DetalheVisita";
+import EditarVisita from "./pages/EditarVisita";
+import EditarPessoa from "./pages/EditarPessoa";
 import PessoasPage from "./pages/PessoasPage";
 import PessoaDetalhePage from "./pages/PessoaDetalhePage";
 import ConfigPage from "./pages/ConfigPage";
@@ -37,6 +39,8 @@ function ProtectedRoutes() {
       <Route path="/nova-visita-existente/:pessoaId" element={<NovaVisitaExistente />} />
       <Route path="/visitas" element={<HomePage />} />
       <Route path="/visita/:id" element={<DetalheVisita />} />
+      <Route path="/editar-visita/:id" element={<EditarVisita />} />
+      <Route path="/editar-pessoa/:id" element={<EditarPessoa />} />
       {/* Admin-only routes */}
       <Route path="/pessoas" element={role === "admin" ? <PessoasPage /> : <Navigate to="/" replace />} />
       <Route path="/pessoa/:id" element={role === "admin" ? <PessoaDetalhePage /> : <Navigate to="/" replace />} />
