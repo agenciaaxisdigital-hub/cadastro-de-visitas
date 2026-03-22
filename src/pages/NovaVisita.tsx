@@ -58,7 +58,7 @@ export default function NovaVisita() {
   const [saving, setSaving] = useState(false);
   const [existingPessoaId, setExistingPessoaId] = useState<string | null>(pessoaId || null);
   const [locked, setLocked] = useState(false);
-  const [showForm, setShowForm] = useState(!!pessoaId);
+  const [showForm, setShowForm] = useState(true);
   const [pessoaStatus, setPessoaStatus] = useState<"idle" | "found" | "new" | "api">("idle");
   const [visitHistory, setVisitHistory] = useState<any[]>([]);
 
