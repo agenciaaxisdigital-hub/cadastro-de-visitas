@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
-import { ArrowLeft, Plus, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, ChevronRight, Calendar } from "lucide-react";
 import { formatDateTime } from "@/lib/masks";
 
 export default function PessoaDetalhePage() {
@@ -26,7 +26,6 @@ export default function PessoaDetalhePage() {
   if (loading) return <AppLayout><div className="card-section animate-pulse h-40" /></AppLayout>;
   if (!pessoa) return <AppLayout><p className="text-center py-16 text-muted-foreground">Pessoa não encontrada.</p></AppLayout>;
 
-
   return (
     <AppLayout>
       <div className="flex items-center gap-3 mb-6">
@@ -37,7 +36,7 @@ export default function PessoaDetalhePage() {
       </div>
 
       <div className="space-y-4">
-        {/* Botão editar dados */}
+        {/* Editar dados */}
         <button
           onClick={() => navigate(`/editar-pessoa/${id}`)}
           className="w-full card-section flex items-center justify-between active:scale-[0.98] transition-transform"
@@ -49,41 +48,70 @@ export default function PessoaDetalhePage() {
           <Pencil size={16} className="text-muted-foreground" />
         </button>
 
+        {/* Histórico de visitas */}
         <div className="card-section">
-          <div className="flex items-center justify-between mb-3">
-            <p className="section-title mb-0">Visitas ({visitas.length})</p>
-            <button
-              onClick={() => navigate(`/nova-visita-existente/${id}`)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline active:scale-95 transition-transform"
-            >
-              <Plus size={14} />
-              Nova Visita
-            </button>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Calendar size={16} className="text-primary" />
+              <p className="text-sm font-bold text-primary uppercase tracking-wide">
+                Histórico de Visitas
+              </p>
+            </div>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              {visitas.length}
+            </span>
           </div>
+
+          {/* Nova visita */}
+          <button
+            onClick={() => navigate(`/nova-visita-existente/${id}`)}
+            className="w-full h-11 mb-4 rounded-lg text-sm font-semibold text-primary border border-primary/30 hover:bg-primary/5 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+          >
+            <Plus size={16} />
+            Registrar nova visita
+          </button>
+
           {visitas.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma visita registrada.</p>
+            <div className="text-center py-8 text-muted-foreground">
+              <Calendar size={28} className="mx-auto mb-2 opacity-40" />
+              <p className="text-sm">Nenhuma visita registrada.</p>
+            </div>
           ) : (
-            visitas.map((v) => (
-              <button
-                key={v.id}
-                onClick={() => navigate(`/visita/${v.id}`)}
-                className="w-full text-left py-3 border-b border-border last:border-0 active:scale-[0.98] transition-transform"
-              >
-                <span className="text-sm font-semibold">{v.assunto || "–"}</span>
-                <p className="text-xs text-muted-foreground">
-                  📅 {formatDateTime(v.data_hora)}
-                </p>
-                {v.quem_indicou && (
-                  <p className="text-xs text-muted-foreground">Indicado por: {v.quem_indicou}</p>
-                )}
-                {v.descricao_assunto && (
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{v.descricao_assunto}</p>
-                )}
-                {v.cadastrado_por && (
-                  <p className="text-[10px] text-muted-foreground/60 mt-1">Cadastrado por: {v.cadastrado_por}</p>
-                )}
-              </button>
-            ))
+            <div className="space-y-2">
+              {visitas.map((v, i) => (
+                <button
+                  key={v.id}
+                  onClick={() => navigate(`/visita/${v.id}`)}
+                  className="w-full text-left flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/50 active:scale-[0.98] transition-all"
+                >
+                  {/* Número da visita */}
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-bold text-primary">{visitas.length - i}</span>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{v.assunto || "–"}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {v.data_hora
+                        ? new Date(v.data_hora).toLocaleDateString("pt-BR", {
+                            weekday: "short",
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "–"}
+                    </p>
+                    {v.quem_indicou && (
+                      <p className="text-[10px] text-muted-foreground/70 truncate">Indicado por: {v.quem_indicou}</p>
+                    )}
+                  </div>
+
+                  <ChevronRight size={16} className="text-muted-foreground/40 flex-shrink-0" />
+                </button>
+              ))}
+            </div>
           )}
         </div>
       </div>
