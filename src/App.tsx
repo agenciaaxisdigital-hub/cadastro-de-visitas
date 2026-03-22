@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Login from "./pages/Login";
 import HomePage from "./pages/HomePage";
 import NovaVisita from "./pages/NovaVisita";
+import NovaVisitaExistente from "./pages/NovaVisitaExistente";
 import DetalheVisita from "./pages/DetalheVisita";
 import PessoasPage from "./pages/PessoasPage";
 import PessoaDetalhePage from "./pages/PessoaDetalhePage";
@@ -33,7 +34,7 @@ function ProtectedRoutes() {
       {/* Home IS the registration form */}
       <Route path="/" element={<NovaVisita />} />
       <Route path="/nova-visita" element={<NovaVisita />} />
-      <Route path="/nova-visita-existente/:pessoaId" element={<NovaVisita />} />
+      <Route path="/nova-visita-existente/:pessoaId" element={<NovaVisitaExistente />} />
       <Route path="/visitas" element={<HomePage />} />
       <Route path="/visita/:id" element={<DetalheVisita />} />
       {/* Admin-only routes */}
