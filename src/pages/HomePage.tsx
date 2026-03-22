@@ -17,7 +17,7 @@ export default function HomePage() {
 
   useEffect(() => {
     fetchVisitas();
-  }, [statusFilter, periodFilter]);
+  }, [periodFilter]);
 
   async function fetchVisitas() {
     setLoading(true);
