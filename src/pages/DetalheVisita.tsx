@@ -26,8 +26,6 @@ export default function DetalheVisita() {
   const [visita, setVisita] = useState<any>(null);
   const [historico, setHistorico] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusUpdate, setStatusUpdate] = useState("");
-  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
     fetchVisita();
