@@ -144,6 +144,9 @@ export default function HomePage() {
                   {v.data_hora ? new Date(v.data_hora).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : ""}
                 </span>
               </div>
+              <p className="text-[11px] text-muted-foreground">
+                {v.data_hora ? new Date(v.data_hora).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" }) : ""}
+              </p>
               <p className="text-xs text-muted-foreground">Assunto: {v.assunto || "–"}</p>
               {v.quem_indicou && (
                 <p className="text-xs text-muted-foreground">Indicado por: {v.quem_indicou}</p>
