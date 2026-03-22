@@ -273,7 +273,7 @@ export default function NovaVisita() {
 
       const { error: visitaError } = await supabase.from("visitas").insert({
         pessoa_id: pid,
-        data_hora: new Date().toISOString(),
+        data_hora: visita.data_hora ? new Date(visita.data_hora).toISOString() : new Date().toISOString(),
         assunto: visita.assunto, descricao_assunto: visita.descricao_assunto || null,
         quem_indicou: visita.quem_indicou || null, origem_visita: visita.origem_visita || null,
         status: visita.status, responsavel_tratativa: visita.responsavel_tratativa || null,
@@ -421,7 +421,7 @@ export default function NovaVisita() {
               <p className="text-sm font-bold text-primary uppercase tracking-wide">Dados da Visita</p>
             </div>
             <div className="space-y-4">
-              
+              <InputField label="Data e hora" value={visita.data_hora} onChange={(v) => setVisita({ ...visita, data_hora: v })} type="datetime-local" />
               <InputField label="Assunto *" value={visita.assunto} onChange={(v) => setVisita({ ...visita, assunto: v })} placeholder="Descreva o motivo da visita" />
               <InputField label="Quem indicou" value={visita.quem_indicou} onChange={(v) => setVisita({ ...visita, quem_indicou: v })} placeholder="Nome" />
             </div>
