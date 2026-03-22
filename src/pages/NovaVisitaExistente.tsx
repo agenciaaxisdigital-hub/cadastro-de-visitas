@@ -45,7 +45,7 @@ export default function NovaVisitaExistente() {
     try {
       const { error } = await supabase.from("visitas").insert({
         pessoa_id: pessoaId,
-        data_hora: dataHora ? new Date(dataHora).toISOString() : new Date().toISOString(),
+        data_hora: new Date().toISOString(),
         assunto,
         status: "Aguardando",
         cadastrado_por: nomeUsuario || "",
@@ -117,15 +117,6 @@ export default function NovaVisitaExistente() {
           <p className="text-sm font-bold text-primary uppercase tracking-wide">Registrar Visita</p>
         </div>
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-foreground">Data e hora</label>
-            <input
-              type="datetime-local"
-              value={dataHora}
-              onChange={(e) => setDataHora(e.target.value)}
-              className="w-full h-12 rounded-lg bg-background border border-border px-4 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
-            />
-          </div>
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-foreground">Motivo / Assunto *</label>
             <input
