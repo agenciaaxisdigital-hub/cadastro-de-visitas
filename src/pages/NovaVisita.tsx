@@ -107,7 +107,7 @@ export default function NovaVisita() {
 
   const [pessoa, setPessoa] = useState<DadosPessoa>({ ...EMPTY_PESSOA });
   const [visita, setVisita] = useState<DadosVisita>({
-    data_hora: new Date().toISOString().slice(0, 16),
+    data_hora: getBrasiliaDateTime(),
     assunto: "", descricao_assunto: "", quem_indicou: "",
     origem_visita: "", status: "Aguardando",
     responsavel_tratativa: "", observacoes: "",
