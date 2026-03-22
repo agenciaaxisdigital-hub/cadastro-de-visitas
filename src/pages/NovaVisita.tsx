@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
-import { ArrowLeft, Loader2, Lock, CheckCircle2, AlertCircle, User, Search } from "lucide-react";
+import { ArrowLeft, Loader2, Lock, CheckCircle2, AlertCircle, User, Search, ExternalLink } from "lucide-react";
 import { maskCPF, unmaskCPF, maskPhone, maskTitulo, validateCPF } from "@/lib/masks";
 import { ASSUNTOS, ORIGENS_VISITA, STATUS_OPTIONS, UF_OPTIONS } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
