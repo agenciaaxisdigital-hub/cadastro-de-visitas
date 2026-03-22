@@ -11,7 +11,7 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [visitas, setVisitas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("Todas");
+  
   const [periodFilter, setPeriodFilter] = useState("Hoje");
   const [searchQuery, setSearchQuery] = useState("");
 
