@@ -28,19 +28,17 @@ function ProtectedRoutes() {
 
   if (!session) return <Login />;
 
-  // Recepção default route is /visitas
-  const defaultRoute = role === "recepcao" ? "/visitas" : "/";
-
   return (
     <Routes>
-      <Route path="/" element={role === "recepcao" ? <Navigate to="/visitas" replace /> : <HomePage />} />
-      <Route path="/visitas" element={<HomePage />} />
+      {/* Home IS the registration form */}
+      <Route path="/" element={<NovaVisita />} />
       <Route path="/nova-visita" element={<NovaVisita />} />
       <Route path="/nova-visita-existente/:pessoaId" element={<NovaVisita />} />
+      <Route path="/visitas" element={<HomePage />} />
       <Route path="/visita/:id" element={<DetalheVisita />} />
       {/* Admin-only routes */}
-      <Route path="/pessoas" element={role === "admin" ? <PessoasPage /> : <Navigate to="/visitas" replace />} />
-      <Route path="/pessoa/:id" element={role === "admin" ? <PessoaDetalhePage /> : <Navigate to="/visitas" replace />} />
+      <Route path="/pessoas" element={role === "admin" ? <PessoasPage /> : <Navigate to="/" replace />} />
+      <Route path="/pessoa/:id" element={role === "admin" ? <PessoaDetalhePage /> : <Navigate to="/" replace />} />
       <Route path="/config" element={<ConfigPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
