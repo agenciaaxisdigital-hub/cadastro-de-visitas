@@ -34,7 +34,7 @@ function ProtectedRoutes() {
       {/* Home IS the registration form */}
       <Route path="/" element={<NovaVisita />} />
       <Route path="/nova-visita" element={<NovaVisita />} />
-      <Route path="/nova-visita-existente/:pessoaId" element={<NovaVisita />} />
+      <Route path="/nova-visita-existente/:pessoaId" element={<NovaVisitaExistente />} />
       <Route path="/visitas" element={<HomePage />} />
       <Route path="/visita/:id" element={<DetalheVisita />} />
       {/* Admin-only routes */}
