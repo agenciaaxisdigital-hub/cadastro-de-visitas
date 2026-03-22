@@ -49,25 +49,17 @@ export default function PessoaDetalhePage() {
       </div>
 
       <div className="space-y-4">
-        <div className="card-section">
-          <p className="section-title">Dados Pessoais</p>
-          <InfoRow label="CPF" value={pessoa.cpf && !pessoa.cpf.startsWith("TEMP") ? maskCPF(pessoa.cpf) : "–"} />
-          <InfoRow label="Telefone" value={pessoa.telefone} />
-          <InfoRow label="E-mail" value={pessoa.email} />
-          <InfoRow label="Instagram" value={pessoa.instagram} />
-          <InfoRow label="WhatsApp" value={pessoa.whatsapp} />
-          <InfoRow label="Data nasc." value={pessoa.data_nascimento ? new Date(pessoa.data_nascimento).toLocaleDateString("pt-BR") : undefined} />
-        </div>
-
-        {(pessoa.titulo_eleitor || pessoa.zona_eleitoral) && (
-          <div className="card-section">
-            <p className="section-title">Dados Eleitorais</p>
-            <InfoRow label="Título" value={pessoa.titulo_eleitor} />
-            <InfoRow label="Zona" value={pessoa.zona_eleitoral} />
-            <InfoRow label="Seção" value={pessoa.secao_eleitoral} />
-            <InfoRow label="Município/UF" value={[pessoa.municipio, pessoa.uf].filter(Boolean).join("/")} />
+        {/* Botão editar dados */}
+        <button
+          onClick={() => navigate(`/editar-pessoa/${id}`)}
+          className="w-full card-section flex items-center justify-between active:scale-[0.98] transition-transform"
+        >
+          <div>
+            <p className="text-sm font-semibold">Dados Pessoais e Eleitorais</p>
+            <p className="text-xs text-muted-foreground">Toque para visualizar e editar</p>
           </div>
-        )}
+          <Pencil size={16} className="text-muted-foreground" />
+        </button>
 
         <div className="card-section">
           <div className="flex items-center justify-between mb-3">
