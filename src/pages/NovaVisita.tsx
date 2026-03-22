@@ -173,7 +173,13 @@ export default function NovaVisita() {
   const handleInputChange = (value: string) => {
     const raw = unmaskCPF(value);
     if (/^\d+$/.test(raw) && raw.length <= 11) {
-      setSearchInput(maskCPF(value));
+      const masked = maskCPF(value);
+      setSearchInput(masked);
+      // Auto-search when 11 digits
+      if (raw.length === 11) {
+        setPessoa(prev => ({ ...prev, cpf: raw }));
+        setTimeout(() => handleSearch(), 100);
+      }
     } else {
       setSearchInput(value);
     }
