@@ -2,11 +2,11 @@ import { useState } from "react";
 import { HyperspeedBackground } from "@/components/HyperspeedBackground";
 import candidataImg from "@/assets/candidata.jpg";
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2 } from "lucide-react";
+import { Loader2, User } from "lucide-react";
 
 export default function Login() {
   const { signIn } = useAuth();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -15,10 +15,14 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!username.trim()) {
+      setError("Digite o nome de usuário");
+      return;
+    }
     setLoading(true);
-    const { error } = await signIn(email, password);
+    const { error } = await signIn(username.trim(), password);
     if (error) {
-      setError("E-mail ou senha incorretos");
+      setError(error);
     }
     setLoading(false);
   };
@@ -65,22 +69,27 @@ export default function Login() {
 
           <div className="space-y-1.5">
             <label className="text-[11px] uppercase tracking-widest text-white/50">
-              E-mail
+              Usuário
             </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full h-12 rounded-xl px-4 text-white outline-none transition-all"
-              style={{
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.1)",
-              }}
-              onFocus={(e) => (e.target.style.borderColor = "rgba(236,72,153,0.5)")}
-              onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
-              placeholder="seu@email.com"
-            />
+            <div className="relative">
+              <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                className="w-full h-12 rounded-xl pl-11 pr-4 text-white outline-none transition-all"
+                style={{
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                }}
+                onFocus={(e) => (e.target.style.borderColor = "rgba(236,72,153,0.5)")}
+                onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
+                placeholder="Nome de usuário"
+                autoCapitalize="none"
+                autoComplete="username"
+              />
+            </div>
           </div>
 
           <div className="space-y-1.5">

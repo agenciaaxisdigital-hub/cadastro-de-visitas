@@ -158,6 +158,30 @@ export type Database = {
         }
         Relationships: []
       }
+      usuarios: {
+        Row: {
+          criado_em: string | null
+          email: string
+          id: string
+          nome_usuario: string
+          user_id: string
+        }
+        Insert: {
+          criado_em?: string | null
+          email: string
+          id?: string
+          nome_usuario: string
+          user_id: string
+        }
+        Update: {
+          criado_em?: string | null
+          email?: string
+          id?: string
+          nome_usuario?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       visitas: {
         Row: {
           assunto: string | null
