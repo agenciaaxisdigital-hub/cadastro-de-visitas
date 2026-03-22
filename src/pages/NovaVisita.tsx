@@ -189,7 +189,7 @@ export default function NovaVisita() {
     setSearchInput("");
     setLocked(false);
     setPessoaStatus("idle");
-    setShowForm(false);
+    setShowForm(true);
     setExistingPessoaId(null);
     setPessoa({ ...EMPTY_PESSOA });
     setVisitHistory([]);
