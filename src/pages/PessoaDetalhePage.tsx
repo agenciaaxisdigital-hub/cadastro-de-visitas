@@ -3,9 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
 import { ArrowLeft, Plus, Pencil } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { maskCPF, formatDateTime } from "@/lib/masks";
-import { getStatusColor } from "@/lib/constants";
 
 export default function PessoaDetalhePage() {
   const { id } = useParams();
@@ -91,12 +89,7 @@ export default function PessoaDetalhePage() {
                 onClick={() => navigate(`/visita/${v.id}`)}
                 className="w-full text-left py-3 border-b border-border last:border-0 active:scale-[0.98] transition-transform"
               >
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-semibold">{v.assunto || "–"}</span>
-                  <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold", getStatusColor(v.status))}>
-                    {v.status}
-                  </span>
-                </div>
+                <span className="text-sm font-semibold">{v.assunto || "–"}</span>
                 <p className="text-xs text-muted-foreground">
                   📅 {formatDateTime(v.data_hora)}
                 </p>
