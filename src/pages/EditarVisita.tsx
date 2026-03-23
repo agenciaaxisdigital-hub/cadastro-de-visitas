@@ -57,23 +57,29 @@ export default function EditarVisita() {
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase
-        .from("visitas")
-        .select("*, pessoas(nome)")
-        .eq("id", id)
-        .single();
-      if (data) {
-        setDataHora(toLocalDatetime(data.data_hora));
-        setAssunto(data.assunto || "");
-        setDescricao(data.descricao_assunto || "");
-        setQuemIndicou(data.quem_indicou || "");
-        setOrigemVisita(data.origem_visita || "");
-        setStatus(data.status || "Aguardando");
-        setResponsavel(data.responsavel_tratativa || "");
-        setObservacoes(data.observacoes || "");
-        setNomePessoa(data.pessoas?.nome || "Visitante");
+      try {
+        const { data, error } = await supabase
+          .from("visitas")
+          .select("*, pessoas(nome)")
+          .eq("id", id)
+          .maybeSingle();
+        if (error) throw error;
+        if (data) {
+          setDataHora(toLocalDatetime(data.data_hora));
+          setAssunto(data.assunto || "");
+          setDescricao(data.descricao_assunto || "");
+          setQuemIndicou(data.quem_indicou || "");
+          setOrigemVisita(data.origem_visita || "");
+          setStatus(data.status || "Aguardando");
+          setResponsavel(data.responsavel_tratativa || "");
+          setObservacoes(data.observacoes || "");
+          setNomePessoa(data.pessoas?.nome || "Visitante");
+        }
+      } catch {
+        // handled silently — user sees empty form
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     load();
   }, [id]);

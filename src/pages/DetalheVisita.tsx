@@ -32,31 +32,39 @@ export default function DetalheVisita() {
   }, [id]);
 
   async function fetchVisita() {
-    const { data } = await supabase
-      .from("visitas")
-      .select("*, pessoas(*)")
-      .eq("id", id)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("visitas")
+        .select("*, pessoas(*)")
+        .eq("id", id)
+        .maybeSingle();
 
-    if (data) {
-      setVisita(data);
-      // Fetch history
-      if (data.pessoa_id) {
-        const { data: hist } = await supabase
-          .from("visitas")
-          .select("id, data_hora, assunto, status")
-          .eq("pessoa_id", data.pessoa_id)
-          .neq("id", id!)
-          .order("data_hora", { ascending: false });
-        setHistorico(hist || []);
+      if (error) throw error;
+      if (data) {
+        setVisita(data);
+        if (data.pessoa_id) {
+          const { data: hist } = await supabase
+            .from("visitas")
+            .select("id, data_hora, assunto, status")
+            .eq("pessoa_id", data.pessoa_id)
+            .neq("id", id!)
+            .order("data_hora", { ascending: false });
+          setHistorico(hist || []);
+        }
       }
+    } catch (err: any) {
+      toast({ title: "Erro ao carregar visita", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
-
   const handleDelete = async () => {
-    await supabase.from("visitas").delete().eq("id", id);
+    const { error } = await supabase.from("visitas").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      return;
+    }
     toast({ title: "Visita excluída" });
     navigate("/");
   };

@@ -41,25 +41,31 @@ export default function EditarPessoa() {
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from("pessoas").select("*").eq("id", id).single();
-      if (data) {
-        setNome(data.nome || "");
-        setCpf(data.cpf || "");
-        setTelefone(data.telefone || "");
-        setWhatsapp(data.whatsapp || "");
-        setEmail(data.email || "");
-        setInstagram(data.instagram || "");
-        setOutrasRedes(data.outras_redes || "");
-        setDataNascimento(data.data_nascimento || "");
-        setTituloEleitor(data.titulo_eleitor || "");
-        setZonaEleitoral(data.zona_eleitoral || "");
-        setSecaoEleitoral(data.secao_eleitoral || "");
-        setMunicipio(data.municipio || "");
-        setUf(data.uf || "");
-        setSituacaoTitulo(data.situacao_titulo || "");
-        setObservacoesGerais(data.observacoes_gerais || "");
+      try {
+        const { data, error } = await supabase.from("pessoas").select("*").eq("id", id).maybeSingle();
+        if (error) throw error;
+        if (data) {
+          setNome(data.nome || "");
+          setCpf(data.cpf || "");
+          setTelefone(data.telefone || "");
+          setWhatsapp(data.whatsapp || "");
+          setEmail(data.email || "");
+          setInstagram(data.instagram || "");
+          setOutrasRedes(data.outras_redes || "");
+          setDataNascimento(data.data_nascimento || "");
+          setTituloEleitor(data.titulo_eleitor || "");
+          setZonaEleitoral(data.zona_eleitoral || "");
+          setSecaoEleitoral(data.secao_eleitoral || "");
+          setMunicipio(data.municipio || "");
+          setUf(data.uf || "");
+          setSituacaoTitulo(data.situacao_titulo || "");
+          setObservacoesGerais(data.observacoes_gerais || "");
+        }
+      } catch {
+        // handled silently — user sees empty form
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     load();
   }, [id]);

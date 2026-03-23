@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/AppLayout";
@@ -95,6 +95,7 @@ export default function NovaVisita() {
   const isHomePage = location.pathname === "/";
 
   const [searchInput, setSearchInput] = useState("");
+  const searchInputRef = useRef(searchInput);
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingPessoaId, setExistingPessoaId] = useState<string | null>(pessoaId || null);
@@ -152,8 +153,10 @@ export default function NovaVisita() {
     setVisitHistory(data || []);
   }
 
+  searchInputRef.current = searchInput;
+
   const handleSearch = useCallback(async () => {
-    const trimmed = searchInput.trim();
+    const trimmed = searchInputRef.current.trim();
     if (!trimmed) return;
     setSearching(true);
     const raw = unmaskCPF(trimmed);
@@ -209,7 +212,7 @@ export default function NovaVisita() {
       }
     }
     setSearching(false);
-  }, [searchInput, toast]);
+  }, [toast]);
 
   const handleInputChange = (value: string) => {
     const raw = unmaskCPF(value);
@@ -219,7 +222,8 @@ export default function NovaVisita() {
       // Auto-search when 11 digits
       if (raw.length === 11) {
         setPessoa(prev => ({ ...prev, cpf: raw }));
-        setTimeout(() => handleSearch(), 100);
+        searchInputRef.current = masked;
+        handleSearch();
       }
     } else {
       setSearchInput(value);
@@ -235,7 +239,7 @@ export default function NovaVisita() {
     setPessoa({ ...EMPTY_PESSOA });
     setVisitHistory([]);
     setVisita({
-      data_hora: new Date().toISOString().slice(0, 16),
+      data_hora: getBrasiliaDateTime(),
       assunto: "", descricao_assunto: "", quem_indicou: "",
       origem_visita: "", status: "Aguardando",
       responsavel_tratativa: "", observacoes: "",

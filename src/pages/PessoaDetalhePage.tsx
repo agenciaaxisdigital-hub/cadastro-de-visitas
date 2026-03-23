@@ -14,14 +14,23 @@ export default function PessoaDetalhePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetch() {
-      const { data: p } = await supabase.from("pessoas").select("*").eq("id", id).single();
-      const { data: v } = await supabase.from("visitas").select("*").eq("pessoa_id", id).order("data_hora", { ascending: false });
-      setPessoa(p);
-      setVisitas(v || []);
-      setLoading(false);
+    async function load() {
+      try {
+        const [{ data: p, error: pErr }, { data: v, error: vErr }] = await Promise.all([
+          supabase.from("pessoas").select("*").eq("id", id).maybeSingle(),
+          supabase.from("visitas").select("*").eq("pessoa_id", id).order("data_hora", { ascending: false }).limit(100),
+        ]);
+        if (pErr) throw pErr;
+        if (vErr) throw vErr;
+        setPessoa(p);
+        setVisitas(v || []);
+      } catch {
+        // pessoa ficará null → UI mostra "Pessoa não encontrada"
+      } finally {
+        setLoading(false);
+      }
     }
-    fetch();
+    load();
   }, [id]);
 
   if (loading) return <AppLayout><div className="card-section animate-pulse h-40" /></AppLayout>;
