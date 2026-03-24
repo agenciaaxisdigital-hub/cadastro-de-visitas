@@ -1,7 +1,7 @@
 {
-  "name": "Recepção do Comitê - Dra. Fernanda Sarelli",
-  "short_name": "Recepção",
-  "description": "Sistema de recepção e controle de visitas do comitê",
+  "name": "Visitas - Dra. Fernanda Sarelli",
+  "short_name": "Visitas",
+  "description": "Agenda e Histórico de Visitas",
   "start_url": "/",
   "display": "standalone",
   "theme_color": "#ec4899",
