@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
-export type AppRole = "admin" | "recepcao";
+export type AppRole = "admin" | "agente";
 
 interface AuthContextType {
   session: Session | null;
@@ -47,36 +47,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function fetchUserData(userId: string) {
-    // Fetch username
     const { data: usuario } = await supabase
       .from("usuarios")
-      .select("nome_usuario")
-      .eq("user_id", userId)
+      .select("nome, tipo")
+      .eq("auth_user_id", userId)
       .maybeSingle();
-    if (usuario) setNomeUsuario(usuario.nome_usuario);
 
-    // Fetch role via RPC
-    const { data: userRole } = await supabase.rpc("get_user_role", { _user_id: userId });
-    if (userRole) {
-      setRole(userRole as AppRole);
+    if (usuario) {
+      setNomeUsuario(usuario.nome);
+      setRole(usuario.tipo as AppRole);
     }
   }
 
   const signIn = async (username: string, password: string): Promise<{ error: string | null }> => {
     const { data: usuario } = await supabase
       .from("usuarios")
-      .select("email")
-      .eq("nome_usuario", username)
+      .select("nome")
+      .eq("nome", username)
       .maybeSingle();
 
     if (!usuario) {
       return { error: "Usuário não encontrado" };
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: usuario.email,
-      password,
-    });
+    const email = `${username.toLowerCase().replace(/\s+/g, ".")}@liderancas.app`;
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       return { error: "Senha incorreta" };

@@ -158,45 +158,27 @@ export type Database = {
         }
         Relationships: []
       }
-      user_roles: {
-        Row: {
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
       usuarios: {
         Row: {
-          criado_em: string | null
-          email: string
           id: string
-          nome_usuario: string
-          user_id: string
+          auth_user_id: string
+          nome: string
+          tipo: string
+          criado_em: string | null
         }
         Insert: {
-          criado_em?: string | null
-          email: string
           id?: string
-          nome_usuario: string
-          user_id: string
+          auth_user_id: string
+          nome: string
+          tipo: string
+          criado_em?: string | null
         }
         Update: {
-          criado_em?: string | null
-          email?: string
           id?: string
-          nome_usuario?: string
-          user_id?: string
+          auth_user_id?: string
+          nome?: string
+          tipo?: string
+          criado_em?: string | null
         }
         Relationships: []
       }
@@ -271,7 +253,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "recepcao"
+      app_role: "admin" | "agente"
     }
     CompositeTypes: {
       [_ in never]: never

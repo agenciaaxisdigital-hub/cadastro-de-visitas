@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, Moon, Sun, UserPlus, Loader2, Trash2, Shield, Headset } from "lucide-react";
+import { LogOut, Moon, Sun, UserPlus, Loader2, Shield, Headset } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ConfigPage() {
@@ -13,7 +13,7 @@ export default function ConfigPage() {
   // User management (admin only)
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [showAddUser, setShowAddUser] = useState(false);
-  const [newUser, setNewUser] = useState({ nome_usuario: "", role: "recepcao" as string });
+  const [newUser, setNewUser] = useState({ nome_usuario: "", role: "agente" as string });
   const [creatingUser, setCreatingUser] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
 
@@ -25,14 +25,7 @@ export default function ConfigPage() {
 
   async function loadUsuarios() {
     const { data } = await supabase.from("usuarios").select("*").order("criado_em", { ascending: false });
-    if (data) {
-      // Enrich with roles
-      const enriched = await Promise.all(data.map(async (u) => {
-        const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: u.user_id });
-        return { ...u, role: roleData || "recepcao" };
-      }));
-      setUsuarios(enriched);
-    }
+    if (data) setUsuarios(data);
   }
 
   const toggleDark = () => {
@@ -47,7 +40,7 @@ export default function ConfigPage() {
       return;
     }
 
-    const autoEmail = `${newUser.nome_usuario.toLowerCase().replace(/\s+/g, ".")}@interno.app`;
+    const autoEmail = `${newUser.nome_usuario.toLowerCase().replace(/\s+/g, ".")}@liderancas.app`;
     const autoPassword = newUser.nome_usuario.trim().toLowerCase().replace(/\s+/g, "") + "@123";
 
     setCreatingUser(true);
@@ -63,20 +56,14 @@ export default function ConfigPage() {
       if (!authData.user) throw new Error("Erro ao criar usuário");
 
       const { error: userError } = await supabase.from("usuarios").insert({
-        user_id: authData.user.id,
-        nome_usuario: newUser.nome_usuario,
-        email: autoEmail,
+        auth_user_id: authData.user.id,
+        nome: newUser.nome_usuario,
+        tipo: newUser.role,
       });
       if (userError) throw userError;
 
-      const { error: roleError } = await supabase.from("user_roles").insert({
-        user_id: authData.user.id,
-        role: newUser.role as any,
-      });
-      if (roleError) throw roleError;
-
       setGeneratedPassword(autoPassword);
-      setNewUser({ nome_usuario: "", role: "recepcao" });
+      setNewUser({ nome_usuario: "", role: "agente" });
       loadUsuarios();
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -87,13 +74,13 @@ export default function ConfigPage() {
   const roleLabel = (r: string) => {
     switch (r) {
       case "admin": return "Administrador";
-      case "recepcao": return "Recepção";
+      case "agente": return "Agente";
       default: return r;
     }
   };
 
-  const RoleIcon = ({ r }: { r: string }) => {
-    if (r === "admin") return <Shield size={14} className="text-primary" />;
+  const RoleIcon = ({ tipo }: { tipo: string }) => {
+    if (tipo === "admin") return <Shield size={14} className="text-primary" />;
     return <Headset size={14} className="text-muted-foreground" />;
   };
 
@@ -111,7 +98,7 @@ export default function ConfigPage() {
           <div className="flex justify-between text-sm py-1">
             <span className="text-muted-foreground">Perfil</span>
             <span className="font-medium flex items-center gap-1">
-              <RoleIcon r={role || ""} />
+              <RoleIcon tipo={role || ""} />
               {roleLabel(role || "")}
             </span>
           </div>
@@ -136,7 +123,7 @@ export default function ConfigPage() {
                   className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
                 <select value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                   className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30 appearance-none">
-                  <option value="recepcao">Recepção</option>
+                  <option value="agente">Agente</option>
                   <option value="admin">Administrador</option>
                 </select>
                 <button onClick={handleCreateUser} disabled={creatingUser}
@@ -159,8 +146,8 @@ export default function ConfigPage() {
                   <div>
                     <p className="text-sm font-medium">{u.nome_usuario}</p>
                     <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                      <RoleIcon r={u.role} />
-                      {roleLabel(u.role)}
+                      <RoleIcon tipo={u.tipo} />
+                      {roleLabel(u.tipo)}
                     </p>
                   </div>
                 </div>
