@@ -13,8 +13,9 @@ export default function ConfigPage() {
   // User management (admin only)
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [showAddUser, setShowAddUser] = useState(false);
-  const [newUser, setNewUser] = useState({ nome_usuario: "", email: "", password: "", role: "recepcao" as string });
+  const [newUser, setNewUser] = useState({ nome_usuario: "", role: "recepcao" as string });
   const [creatingUser, setCreatingUser] = useState(false);
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
 
   useEffect(() => {
     const isDark = document.documentElement.classList.contains("dark");
@@ -41,31 +42,26 @@ export default function ConfigPage() {
   };
 
   const handleCreateUser = async () => {
-    if (!newUser.nome_usuario || !newUser.password) {
-      toast({ title: "Preencha nome e senha", variant: "destructive" });
-      return;
-    }
-    if (newUser.password.length < 6) {
-      toast({ title: "Senha deve ter pelo menos 6 caracteres", variant: "destructive" });
+    if (!newUser.nome_usuario.trim()) {
+      toast({ title: "Preencha o nome do usuário", variant: "destructive" });
       return;
     }
 
     const autoEmail = `${newUser.nome_usuario.toLowerCase().replace(/\s+/g, ".")}@interno.app`;
+    const autoPassword = newUser.nome_usuario.trim().toLowerCase().replace(/\s+/g, "") + "@123";
 
     setCreatingUser(true);
+    setGeneratedPassword(null);
     try {
-      // Create auth user via admin endpoint (we'll use signUp as workaround)
-      // Note: In production, this should be an edge function with service_role
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: autoEmail,
-        password: newUser.password,
+        password: autoPassword,
         options: { data: { nome: newUser.nome_usuario } },
       });
 
       if (authError) throw authError;
       if (!authData.user) throw new Error("Erro ao criar usuário");
 
-      // Insert into usuarios table
       const { error: userError } = await supabase.from("usuarios").insert({
         user_id: authData.user.id,
         nome_usuario: newUser.nome_usuario,
@@ -73,16 +69,14 @@ export default function ConfigPage() {
       });
       if (userError) throw userError;
 
-      // Insert role
       const { error: roleError } = await supabase.from("user_roles").insert({
         user_id: authData.user.id,
         role: newUser.role as any,
       });
       if (roleError) throw roleError;
 
-      toast({ title: `✅ Usuário "${newUser.nome_usuario}" criado!` });
-      setNewUser({ nome_usuario: "", email: "", password: "", role: "recepcao" });
-      setShowAddUser(false);
+      setGeneratedPassword(autoPassword);
+      setNewUser({ nome_usuario: "", role: "recepcao" });
       loadUsuarios();
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -138,10 +132,7 @@ export default function ConfigPage() {
             {showAddUser && (
               <div className="space-y-3 p-3 rounded-xl bg-muted/50 mb-3 animate-fade-in">
                 <input type="text" placeholder="Nome do usuário" value={newUser.nome_usuario}
-                  onChange={(e) => setNewUser({ ...newUser, nome_usuario: e.target.value })}
-                  className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
-                <input type="password" placeholder="Senha" value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  onChange={(e) => { setNewUser({ ...newUser, nome_usuario: e.target.value }); setGeneratedPassword(null); }}
                   className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
                 <select value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                   className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30 appearance-none">
@@ -153,6 +144,12 @@ export default function ConfigPage() {
                   {creatingUser ? <Loader2 size={14} className="animate-spin" /> : null}
                   {creatingUser ? "Criando…" : "Criar usuário"}
                 </button>
+                {generatedPassword && (
+                  <div className="rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 p-3">
+                    <p className="text-xs text-green-700 dark:text-green-400 font-medium mb-1">Usuário criado! Anote a senha inicial:</p>
+                    <p className="font-mono text-sm font-bold text-green-800 dark:text-green-300">{generatedPassword}</p>
+                  </div>
+                )}
               </div>
             )}
 
