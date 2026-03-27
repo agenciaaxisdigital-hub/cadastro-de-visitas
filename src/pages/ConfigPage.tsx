@@ -13,9 +13,8 @@ export default function ConfigPage() {
   // User management (admin only)
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [showAddUser, setShowAddUser] = useState(false);
-  const [newUser, setNewUser] = useState({ nome_usuario: "", role: "recepcao" as string });
+  const [newUser, setNewUser] = useState({ nome_usuario: "", email: "", password: "", role: "recepcao" as string });
   const [creatingUser, setCreatingUser] = useState(false);
-  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
 
   useEffect(() => {
     const isDark = document.documentElement.classList.contains("dark");
@@ -41,20 +40,16 @@ export default function ConfigPage() {
   };
 
   const handleCreateUser = async () => {
-    if (!newUser.nome_usuario.trim()) {
-      toast({ title: "Preencha o nome do usuário", variant: "destructive" });
+    if (!newUser.nome_usuario.trim() || !newUser.email.trim() || !newUser.password.trim()) {
+      toast({ title: "Preencha todos os campos", variant: "destructive" });
       return;
     }
 
-    const autoEmail = `${newUser.nome_usuario.toLowerCase().replace(/\s+/g, ".")}@interno.app`;
-    const autoPassword = newUser.nome_usuario.trim().toLowerCase().replace(/\s+/g, "") + "@123";
-
     setCreatingUser(true);
-    setGeneratedPassword(null);
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: autoEmail,
-        password: autoPassword,
+        email: newUser.email.trim(),
+        password: newUser.password,
         options: { data: { nome: newUser.nome_usuario } },
       });
 
@@ -64,7 +59,7 @@ export default function ConfigPage() {
       const { error: userError } = await supabase.from("usuarios").insert({
         user_id: authData.user.id,
         nome_usuario: newUser.nome_usuario,
-        email: autoEmail,
+        email: newUser.email.trim(),
       });
       if (userError) throw userError;
 
@@ -74,8 +69,8 @@ export default function ConfigPage() {
       });
       if (roleError) throw roleError;
 
-      setGeneratedPassword(autoPassword);
-      setNewUser({ nome_usuario: "", role: "recepcao" });
+      setNewUser({ nome_usuario: "", email: "", password: "", role: "recepcao" });
+      toast({ title: "Sucesso", description: "Usuário criado com sucesso!" });
       loadUsuarios();
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -131,7 +126,13 @@ export default function ConfigPage() {
             {showAddUser && (
               <div className="space-y-3 p-3 rounded-xl bg-muted/50 mb-3 animate-fade-in">
                 <input type="text" placeholder="Nome do usuário" value={newUser.nome_usuario}
-                  onChange={(e) => { setNewUser({ ...newUser, nome_usuario: e.target.value }); setGeneratedPassword(null); }}
+                  onChange={(e) => { setNewUser({ ...newUser, nome_usuario: e.target.value }); }}
+                  className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                <input type="email" placeholder="E-mail (ex: test@interno.app)" value={newUser.email}
+                  onChange={(e) => { setNewUser({ ...newUser, email: e.target.value }); }}
+                  className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                <input type="password" placeholder="Senha" value={newUser.password}
+                  onChange={(e) => { setNewUser({ ...newUser, password: e.target.value }); }}
                   className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
                 <select value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                   className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30 appearance-none">
@@ -143,12 +144,6 @@ export default function ConfigPage() {
                   {creatingUser ? <Loader2 size={14} className="animate-spin" /> : null}
                   {creatingUser ? "Criando…" : "Criar usuário"}
                 </button>
-                {generatedPassword && (
-                  <div className="rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 p-3">
-                    <p className="text-xs text-green-700 dark:text-green-400 font-medium mb-1">Usuário criado! Anote a senha inicial:</p>
-                    <p className="font-mono text-sm font-bold text-green-800 dark:text-green-300">{generatedPassword}</p>
-                  </div>
-                )}
               </div>
             )}
 
