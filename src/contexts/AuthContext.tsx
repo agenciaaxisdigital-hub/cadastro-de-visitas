@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: usuario } = await supabase
       .from("usuarios")
       .select("user_id")
-      .eq("nome_usuario", username)
+      .ilike("nome_usuario", username)
       .maybeSingle();
 
     if (!usuario) {
