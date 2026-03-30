@@ -59,33 +59,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Busca role via RPC (tabela user_roles)
-    const { data: userRole } = await supabase.rpc("get_user_role", { _user_id: userId });
-    if (userRole) setRole(userRole as AppRole);
+    // Observacao: se o RPC nao estiver disponivel no projeto, fazemos fallback na tabela.
+    setRole(null);
+    const { data: userRole, error: roleError } = await supabase.rpc("get_user_role", { _user_id: userId });
+    if (!roleError && userRole) {
+      setRole(userRole as AppRole);
+      return;
+    }
+
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (roleRow?.role) {
+      setRole(roleRow.role as AppRole);
+    }
   }
 
   const signIn = async (username: string, password: string): Promise<{ error: string | null }> => {
-    // Busca usuário pelo nome_usuario (coluna correta do schema)
-    const { data: usuario } = await supabase
+    const identifier = username.trim();
+    const looksLikeEmail = identifier.includes("@");
+
+    // 1) Tenta buscar por nome_usuario (o que a tela pede)
+    const { data: usuarioByNome } = await supabase
       .from("usuarios")
-      .select("user_id")
-      .ilike("nome_usuario", username)
+      .select("user_id, email")
+      .ilike("nome_usuario", identifier)
       .maybeSingle();
 
-    if (!usuario) {
-      return { error: "Usuário não encontrado" };
-    }
+    // 2) Se nao achou e o usuario digitou um email, tenta por email
+    const { data: usuarioByEmail } = !usuarioByNome && looksLikeEmail
+      ? await supabase
+        .from("usuarios")
+        .select("user_id, email")
+        .eq("email", identifier)
+        .maybeSingle()
+      : { data: null };
 
-    // Gera email interno baseado no nome (sem confirmação de email)
-    const emailPadrao = username.toLowerCase().replace(/\s+/g, ".").replace(/[^a-z0-9.]/g, "") + "@sistema.local";
+    const usuario = usuarioByNome ?? usuarioByEmail;
 
+    // Se for email, tentamos login direto (independe da tabela "usuarios")
+    // Se nao for email, geramos o email padrao baseado no nome de usuario.
+    const baseForEmail = identifier
+      .toLowerCase()
+      .replace(/\s+/g, ".")
+      .replace(/[^a-z0-9.]/g, "");
+
+    const emailToUse =
+      usuario?.email ||
+      (looksLikeEmail ? identifier : `${baseForEmail}@sistema.local`);
+
+    // 3) Login principal
     let { error } = await supabase.auth.signInWithPassword({
-      email: emailPadrao,
+      email: emailToUse,
       password,
     });
 
-    if (error) {
-      // Fallback: tenta a versão legacy
-      const emailLegacy = username.toLowerCase().replace(/\s+/g, ".") + "@interno.app";
+    if (error && !looksLikeEmail) {
+      // Fallback: tenta a versão legacy se for o e-mail padrão
+      const emailLegacy = `${baseForEmail}@interno.app`;
       const legacyAttempt = await supabase.auth.signInWithPassword({
         email: emailLegacy,
         password,
