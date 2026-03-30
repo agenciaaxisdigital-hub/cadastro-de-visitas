@@ -2,26 +2,18 @@ import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { createClient } from "@supabase/supabase-js";
 import {
   LogOut, Moon, Sun, UserPlus, Loader2, Shield, Headset,
   Pencil, X, Check, Key, ChevronDown, ChevronUp
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-// Client separado para criar usuários sem afetar a sessão do admin
-const supabaseAdmin = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-  { auth: { persistSession: false, autoRefreshToken: false } }
-);
+import { cn } from "@/lib/utils";
 
 interface UsuarioComRole {
   id: string;
-  user_id: string;
-  nome_usuario: string;
-  email: string;
-  role: string;
+  auth_user_id: string; // mapeado de user_id
+  nome: string;         // mapeado de nome_usuario
+  tipo: string;         // mapeado de user_roles.role
 }
 
 export default function ConfigPage() {
@@ -32,10 +24,10 @@ export default function ConfigPage() {
   // User management (admin only)
   const [usuarios, setUsuarios] = useState<UsuarioComRole[]>([]);
   const [showAddUser, setShowAddUser] = useState(false);
-  const [newUser, setNewUser] = useState({ nome_usuario: "", email: "", password: "", role: "recepcao" });
+  const [newUser, setNewUser] = useState({ nome: "", senha: "", tipo: "recepcao" });
   const [creatingUser, setCreatingUser] = useState(false);
 
-  // Editing
+  // Editing role
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editRole, setEditRole] = useState("");
   const [savingRole, setSavingRole] = useState(false);
@@ -55,13 +47,21 @@ export default function ConfigPage() {
   }, [isAdmin]);
 
   async function loadUsuarios() {
-    const { data } = await supabase.from("usuarios").select("*").order("criado_em", { ascending: false });
+    // Schema real: usuarios(user_id, nome_usuario) + user_roles(user_id, role)
+    const { data } = await supabase
+      .from("usuarios")
+      .select("id, user_id, nome_usuario, criado_em, user_roles(role)")
+      .order("criado_em", { ascending: false });
+
     if (data) {
-      const enriched = await Promise.all(data.map(async (u) => {
-        const { data: roleData } = await supabase.rpc("get_user_role", { _user_id: u.user_id });
-        return { ...u, role: roleData || "recepcao" } as UsuarioComRole;
+      // Mapeia para a interface esperada pelo restante do componente
+      const mapped: UsuarioComRole[] = (data as any[]).map((u) => ({
+        id: u.id,
+        auth_user_id: u.user_id,
+        nome: u.nome_usuario,
+        tipo: u.user_roles?.[0]?.role ?? "recepcao",
       }));
-      setUsuarios(enriched);
+      setUsuarios(mapped);
     }
   }
 
@@ -72,46 +72,30 @@ export default function ConfigPage() {
   };
 
   const handleCreateUser = async () => {
-    const nome = newUser.nome_usuario.trim();
-    const email = newUser.email.trim();
-    const password = newUser.password;
+    const nome = newUser.nome.trim();
+    const senha = newUser.senha;
 
-    if (!nome || !email || !password) {
-      toast({ title: "Preencha todos os campos", variant: "destructive" });
+    if (!nome || !senha) {
+      toast({ title: "Preencha nome e senha", variant: "destructive" });
       return;
     }
 
-    if (password.length < 6) {
+    if (senha.length < 6) {
       toast({ title: "A senha deve ter pelo menos 6 caracteres", variant: "destructive" });
       return;
     }
 
     setCreatingUser(true);
     try {
-      // Usa o client separado para não deslogar o admin
-      const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
-        email,
-        password,
-        options: { data: { nome } },
+      const { data, error } = await supabase.functions.invoke('criar-usuario', {
+        body: { nome, senha, tipo: newUser.tipo },
       });
+      
+      if (error || data?.error) {
+        throw new Error(data?.error || error?.message || "Erro desconhecido");
+      }
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Erro ao criar usuário");
-
-      const { error: userError } = await supabase.from("usuarios").insert({
-        user_id: authData.user.id,
-        nome_usuario: nome,
-        email,
-      });
-      if (userError) throw userError;
-
-      const { error: roleError } = await supabase.from("user_roles").insert({
-        user_id: authData.user.id,
-        role: newUser.role as any,
-      });
-      if (roleError) throw roleError;
-
-      setNewUser({ nome_usuario: "", email: "", password: "", role: "recepcao" });
+      setNewUser({ nome: "", senha: "", tipo: "recepcao" });
       setShowAddUser(false);
       toast({ title: "Sucesso!", description: `Usuário "${nome}" criado com sucesso.` });
       loadUsuarios();
@@ -121,13 +105,14 @@ export default function ConfigPage() {
     setCreatingUser(false);
   };
 
-  const handleUpdateRole = async (userId: string) => {
+  const handleUpdateRole = async (authUserId: string) => {
     setSavingRole(true);
     try {
+      // user_roles não tem policy UPDATE — fazemos DELETE + INSERT
+      await supabase.from("user_roles").delete().eq("user_id", authUserId);
       const { error } = await supabase
         .from("user_roles")
-        .update({ role: editRole as any })
-        .eq("user_id", userId);
+        .insert({ user_id: authUserId, role: editRole as "admin" | "recepcao" });
       if (error) throw error;
 
       toast({ title: "Sucesso!", description: "Perfil atualizado." });
@@ -139,28 +124,20 @@ export default function ConfigPage() {
     setSavingRole(false);
   };
 
-  const handleChangePassword = async (userEmail: string) => {
+  const handleChangePassword = async (userNome: string) => {
     if (!newPassword || newPassword.length < 6) {
-      toast({ title: "A senha deve ter pelo menos 6 caracteres", variant: "destructive" });
+      toast({ title: "Senha deve ter pelo menos 6 caracteres", variant: "destructive" });
       return;
     }
     setSavingPassword(true);
     try {
-      // Para alterar a senha de outro usuário pelo client-side,
-      // precisamos usar a API de reset. Porém, a forma mais direta
-      // é gerar um magic link / password reset via e-mail.
-      // Como alternativa funcional, fazemos login no client separado
-      // e atualizamos a senha. Mas precisaríamos da senha antiga.
-      // A solução mais limpa: usar o password reset do Supabase.
-      const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
-        redirectTo: window.location.origin,
+      // Usa a Edge Function criar-usuario: se usuário já existe, atualiza a senha
+      const { data, error } = await supabase.functions.invoke("criar-usuario", {
+        body: { nome: userNome, senha: newPassword },
       });
-      if (error) throw error;
+      if (error || data?.error) throw new Error(data?.error || error?.message);
 
-      toast({
-        title: "Link de redefinição enviado!",
-        description: `Um e-mail foi enviado para ${userEmail} com o link para redefinir a senha.`,
-      });
+      toast({ title: "Sucesso!", description: "Senha atualizada com sucesso." });
       setChangingPasswordUserId(null);
       setNewPassword("");
     } catch (err: any) {
@@ -182,13 +159,13 @@ export default function ConfigPage() {
     return <Headset size={14} className="text-muted-foreground" />;
   };
 
-  const toggleExpand = (userId: string) => {
-    if (expandedUserId === userId) {
+  const toggleExpand = (authUserId: string) => {
+    if (expandedUserId === authUserId) {
       setExpandedUserId(null);
       setEditingUserId(null);
       setChangingPasswordUserId(null);
     } else {
-      setExpandedUserId(userId);
+      setExpandedUserId(authUserId);
       setEditingUserId(null);
       setChangingPasswordUserId(null);
     }
@@ -218,99 +195,138 @@ export default function ConfigPage() {
         {isAdmin && (
           <div className="card-section">
             <div className="flex items-center justify-between mb-3">
-              <p className="section-title">Usuários do Sistema</p>
-              <button onClick={() => { setShowAddUser(!showAddUser); }}
-                className="text-xs font-semibold text-primary flex items-center gap-1 active:scale-95 transition-transform">
-                {showAddUser ? <X size={14} /> : <UserPlus size={14} />}
-                {showAddUser ? "Cancelar" : "Novo"}
+              <p className="section-title text-[10px] uppercase tracking-wider text-muted-foreground/60">Usuários do Sistema</p>
+              <button
+                onClick={() => setShowAddUser(!showAddUser)}
+                className="text-xs font-bold text-primary flex items-center gap-1 active:scale-95 transition-all"
+              >
+                {showAddUser ? (
+                  <>
+                    <X size={14} /> Cancelar
+                  </>
+                ) : (
+                  <>
+                    <UserPlus size={14} /> Novo
+                  </>
+                )}
               </button>
             </div>
 
             {showAddUser && (
-              <div className="space-y-3 p-4 rounded-xl bg-muted/50 mb-4 animate-fade-in border border-border/50">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Novo Usuário</p>
+              <div className="space-y-4 p-4 rounded-xl bg-card border border-border/50 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60">Novo Usuário</p>
 
-                <div>
-                  <label className="text-[11px] text-muted-foreground font-medium mb-1 block">Nome</label>
-                  <input type="text" placeholder="Ex: Maria Silva" value={newUser.nome_usuario}
-                    onChange={(e) => setNewUser({ ...newUser, nome_usuario: e.target.value })}
-                    className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">Nome do usuário *</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Ana Paula"
+                    value={newUser.nome}
+                    onChange={(e) => setNewUser({ ...newUser, nome: e.target.value })}
+                    className="w-full h-11 rounded-xl bg-muted/30 border border-border/20 px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
+                  />
                 </div>
 
-                <div>
-                  <label className="text-[11px] text-muted-foreground font-medium mb-1 block">E-mail</label>
-                  <input type="email" placeholder="Ex: maria@email.com" value={newUser.email}
-                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                    className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">Senha *</label>
+                  <input
+                    type="password"
+                    placeholder="Mínimo 6 caracteres"
+                    value={newUser.senha}
+                    onChange={(e) => setNewUser({ ...newUser, senha: e.target.value })}
+                    className="w-full h-11 rounded-xl bg-muted/30 border border-border/20 px-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium font-mono"
+                  />
                 </div>
 
-                <div>
-                  <label className="text-[11px] text-muted-foreground font-medium mb-1 block">Senha</label>
-                  <input type="password" placeholder="Mínimo 6 caracteres" value={newUser.password}
-                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                    className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 ml-1">Nível de Acesso *</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setNewUser({ ...newUser, tipo: "recepcao" })}
+                      className={cn(
+                        "h-11 rounded-xl border-2 text-xs font-bold transition-all flex items-center justify-center gap-2",
+                        newUser.tipo === "recepcao"
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-border/50 text-muted-foreground/40 bg-transparent"
+                      )}
+                    >
+                      <Headset size={14} /> Recepção
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewUser({ ...newUser, tipo: "admin" })}
+                      className={cn(
+                        "h-11 rounded-xl border-2 text-xs font-bold transition-all flex items-center justify-center gap-2",
+                        newUser.tipo === "admin"
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-border/50 text-muted-foreground/40 bg-transparent"
+                      )}
+                    >
+                      <Shield size={14} /> Admin
+                    </button>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-[11px] text-muted-foreground font-medium mb-1 block">Perfil</label>
-                  <select value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                    className="w-full h-10 rounded-lg bg-card border border-border px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30 appearance-none">
-                    <option value="recepcao">Recepção</option>
-                    <option value="admin">Administrador</option>
-                  </select>
-                </div>
-
-                <button onClick={handleCreateUser} disabled={creatingUser}
-                  className="w-full h-11 rounded-lg gradient-primary text-white font-semibold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-70 mt-1">
-                  {creatingUser ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={16} />}
-                  {creatingUser ? "Criando…" : "Criar usuário"}
+                <button
+                  onClick={handleCreateUser}
+                  disabled={creatingUser}
+                  className="w-full h-12 rounded-xl gradient-primary text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50 mt-1 shadow-lg shadow-primary/20"
+                >
+                  {creatingUser ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Criando...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus size={18} /> Criar usuário
+                    </>
+                  )}
                 </button>
               </div>
             )}
 
             <div className="space-y-1">
               {usuarios.map((u) => {
-                const isExpanded = expandedUserId === u.user_id;
-                const isEditingRole = editingUserId === u.user_id;
-                const isChangingPw = changingPasswordUserId === u.user_id;
-                const isSelf = u.user_id === user?.id;
+                const isExpanded = expandedUserId === u.auth_user_id;
+                const isEditingRole = editingUserId === u.auth_user_id;
+                const isChangingPw = changingPasswordUserId === u.auth_user_id;
+                const isSelf = u.auth_user_id === user?.id;
 
                 return (
                   <div key={u.id} className="rounded-xl border border-border/50 overflow-hidden transition-all">
-                    {/* User row */}
                     <button
-                      onClick={() => toggleExpand(u.user_id)}
+                      onClick={() => toggleExpand(u.auth_user_id)}
                       className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/30 active:scale-[0.98] transition-all"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                           <span className="text-xs font-bold text-primary">
-                            {u.nome_usuario.charAt(0).toUpperCase()}
+                            {u.nome?.charAt(0).toUpperCase() || "?"}
                           </span>
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">
-                            {u.nome_usuario}
+                            {u.nome}
                             {isSelf && <span className="text-[10px] text-primary ml-1">(você)</span>}
                           </p>
                           <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                            <RoleIcon r={u.role} />
-                            {roleLabel(u.role)}
+                            <RoleIcon r={u.tipo || "recepcao"} />
+                            {roleLabel(u.tipo || "recepcao")}
                           </p>
                         </div>
                       </div>
-                      {isExpanded ? <ChevronUp size={16} className="text-muted-foreground shrink-0" /> : <ChevronDown size={16} className="text-muted-foreground shrink-0" />}
+                      {isExpanded
+                        ? <ChevronUp size={16} className="text-muted-foreground shrink-0" />
+                        : <ChevronDown size={16} className="text-muted-foreground shrink-0" />}
                     </button>
 
-                    {/* Expanded actions */}
                     {isExpanded && (
                       <div className="px-3 pb-3 space-y-2 animate-fade-in border-t border-border/30 pt-2">
-                        <p className="text-[10px] text-muted-foreground">{u.email}</p>
-
                         {/* Edit Role */}
                         {!isEditingRole ? (
                           <button
-                            onClick={() => { setEditingUserId(u.user_id); setEditRole(u.role); setChangingPasswordUserId(null); }}
+                            onClick={() => { setEditingUserId(u.auth_user_id); setEditRole(u.tipo || "recepcao"); setChangingPasswordUserId(null); }}
                             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/40 hover:bg-muted/70 text-sm transition-colors"
                           >
                             <Pencil size={13} className="text-muted-foreground" />
@@ -323,7 +339,7 @@ export default function ConfigPage() {
                               <option value="recepcao">Recepção</option>
                               <option value="admin">Administrador</option>
                             </select>
-                            <button onClick={() => handleUpdateRole(u.user_id)} disabled={savingRole}
+                            <button onClick={() => handleUpdateRole(u.auth_user_id)} disabled={savingRole}
                               className="h-9 w-9 rounded-lg bg-green-500 text-white flex items-center justify-center shrink-0 active:scale-90 transition-transform disabled:opacity-60">
                               {savingRole ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                             </button>
@@ -337,7 +353,7 @@ export default function ConfigPage() {
                         {/* Change password */}
                         {!isChangingPw ? (
                           <button
-                            onClick={() => { setChangingPasswordUserId(u.user_id); setNewPassword(""); setEditingUserId(null); }}
+                            onClick={() => { setChangingPasswordUserId(u.auth_user_id); setNewPassword(""); setEditingUserId(null); }}
                             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/40 hover:bg-muted/70 text-sm transition-colors"
                           >
                             <Key size={13} className="text-muted-foreground" />
@@ -346,15 +362,22 @@ export default function ConfigPage() {
                         ) : (
                           <div className="space-y-2 p-3 rounded-lg bg-muted/30 border border-border/50">
                             <p className="text-xs text-muted-foreground">
-                              Um e-mail será enviado para <strong>{u.email}</strong> com o link para redefinir a senha.
+                              Digite a nova senha para <strong>{u.nome}</strong>.
                             </p>
+                            <input
+                              type="password"
+                              placeholder="Nova senha (mín. 6 caracteres)"
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
+                              className="w-full h-9 rounded-lg bg-card border border-border px-2 text-xs outline-none focus:ring-2 focus:ring-primary/30 font-mono"
+                            />
                             <div className="flex items-center gap-2">
-                              <button onClick={() => handleChangePassword(u.email)} disabled={savingPassword}
+                              <button onClick={() => handleChangePassword(u.nome)} disabled={savingPassword}
                                 className="flex-1 h-9 rounded-lg gradient-primary text-white text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform disabled:opacity-60">
                                 {savingPassword ? <Loader2 size={12} className="animate-spin" /> : <Key size={12} />}
-                                Enviar link
+                                Salvar senha
                               </button>
-                              <button onClick={() => setChangingPasswordUserId(null)}
+                              <button onClick={() => { setChangingPasswordUserId(null); setNewPassword(""); }}
                                 className="h-9 px-3 rounded-lg bg-muted text-muted-foreground text-xs font-medium active:scale-90 transition-transform">
                                 Cancelar
                               </button>

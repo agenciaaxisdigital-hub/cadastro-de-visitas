@@ -47,23 +47,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function fetchUserData(userId: string) {
+    // Busca nome da tabela usuarios usando user_id (coluna correta do schema)
     const { data: usuario } = await supabase
       .from("usuarios")
       .select("nome_usuario")
       .eq("user_id", userId)
       .maybeSingle();
-    if (usuario) setNomeUsuario(usuario.nome_usuario);
 
-    const { data: userRole } = await supabase.rpc("get_user_role", { _user_id: userId });
-    if (userRole) {
-      setRole(userRole as AppRole);
+    if (usuario) {
+      setNomeUsuario(usuario.nome_usuario || "");
     }
+
+    // Busca role via RPC (tabela user_roles)
+    const { data: userRole } = await supabase.rpc("get_user_role", { _user_id: userId });
+    if (userRole) setRole(userRole as AppRole);
   }
 
   const signIn = async (username: string, password: string): Promise<{ error: string | null }> => {
+    // Busca usuário pelo nome_usuario (coluna correta do schema)
     const { data: usuario } = await supabase
       .from("usuarios")
-      .select("email")
+      .select("user_id")
       .eq("nome_usuario", username)
       .maybeSingle();
 
@@ -71,13 +75,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: "Usuário não encontrado" };
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: usuario.email,
+    // Gera email interno baseado no nome (sem confirmação de email)
+    const emailPadrao = username.toLowerCase().replace(/\s+/g, ".").replace(/[^a-z0-9.]/g, "") + "@sistema.local";
+
+    let { error } = await supabase.auth.signInWithPassword({
+      email: emailPadrao,
       password,
     });
 
     if (error) {
-      return { error: "Senha incorreta" };
+      // Fallback: tenta a versão legacy
+      const emailLegacy = username.toLowerCase().replace(/\s+/g, ".") + "@interno.app";
+      const legacyAttempt = await supabase.auth.signInWithPassword({
+        email: emailLegacy,
+        password,
+      });
+      error = legacyAttempt.error;
+    }
+
+    if (error) {
+      return { error: "Senha incorreta ou usuário não encontrado" };
     }
 
     return { error: null };
